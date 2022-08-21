@@ -1,11 +1,10 @@
-name: 'Your name here'
-description: 'Provide a description here'
-author: 'Your name or organization here'
+name: 'JetBrains Plugin Platform Version Update Action'
+description: 'GitHub Action to update JetBrains Plugins when a new JetBrains Platform Version is available.'
+author: 'ChrisCarini'
 inputs:
-  milliseconds: # change this
+  PAT_TOKEN_FOR_IJ_UPDATE_ACTION: # change this
     required: true
-    description: 'input description here'
-    default: 'default value if applicable'
+    description: 'PAT token; necessary to update workflow files.'
 runs:
   using: 'node16'
   main: 'dist/index.js'
