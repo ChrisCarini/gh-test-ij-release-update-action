@@ -5,7 +5,7 @@ import { readFileSync } from 'fs';
 import * as properties from 'properties';
 import * as semver from 'semver';
 import { simpleGit } from 'simple-git';
-import { parseSemver } from './versions';
+import { formatVersion, parseSemver, ZERO_SEMVER } from './versions';
 
 async function git_add(file: string): Promise<void> {
   await simpleGit()
@@ -18,7 +18,7 @@ function _inc_version(version: semver.SemVer, release: semver.ReleaseType): semv
   const incrementedVersion: string | null = semver.inc(version, release);
   if (version === null || incrementedVersion === null) {
     core.setFailed(`Failed to increment ${release} version of ${version}`);
-    return new semver.SemVer('0.0.0');
+    return ZERO_SEMVER;
   }
   return new semver.SemVer(incrementedVersion);
 }
@@ -26,7 +26,7 @@ function _inc_version(version: semver.SemVer, release: semver.ReleaseType): semv
 function _next_plugin_version(
   plugin_version: semver.SemVer,
   current_platform_version: semver.SemVer,
-  new_platform_version: semver.SemVer
+  new_platform_version: semver.SemVer,
 ): semver.SemVer {
   // # Platform: 2022.3.2 -> 2023.1.0
   // # Plugin  :    0.2.6 ->    1.0.0
@@ -76,21 +76,36 @@ export async function updateGradleProperties(latestIdeVersion: semver.SemVer): P
     core.debug(`properties:`);
     core.debug(JSON.stringify(gradleProperties));
     const currentPluginVersion = parseSemver(gradleProperties?.pluginVersion?.toString());
-    const currentPluginVerifierIdeVersions = parseSemver(gradleProperties?.pluginVerifierIdeVersions?.toString());
+
+    // const currentPluginVerifierIdeVersions = parseSemver(gradleProperties?.pluginVerifierIdeVersions?.toString());
+    const currentPluginVerifierIdeVersions = gradleProperties?.pluginVerifierIdeVersions?.toString().split(',')
+      .map((v) => {
+        const semVer = parseSemver(v);
+        core.info(`${v} -> ${semVer}`);
+        return semVer;
+      })
+      .filter((v) => {
+        if (v.compare(ZERO_SEMVER)) {
+          return true;
+        }
+        return false;
+      });
+
+
     const currentPlatformVersion = parseSemver(gradleProperties?.platformVersion?.toString());
     core.debug(`currentPluginVersion:             ${currentPluginVersion}`);
     core.debug(`currentPluginVerifierIdeVersions: ${currentPluginVerifierIdeVersions}`);
     core.debug(`currentPlatformVersion:           ${currentPlatformVersion}`);
 
     if (semver.eq(currentPlatformVersion, latestIdeVersion)) {
-      core.info(`Skipping [gradle.properties] file, versions same (${currentPlatformVersion} == ${latestIdeVersion}).`);
+      // Skip further execution, as the platform version is already the same, and we will end the action
       return currentPlatformVersion;
     }
 
     const next_plugin_version: semver.SemVer = _next_plugin_version(
       currentPluginVersion,
       currentPlatformVersion,
-      latestIdeVersion
+      latestIdeVersion,
     );
     core.debug('');
     core.debug(`next_plugin_version:                  ${next_plugin_version}`);
@@ -100,9 +115,7 @@ export async function updateGradleProperties(latestIdeVersion: semver.SemVer): P
     core.debug('File contents:');
     core.debug(data);
 
-    const replaceableNewVersion = latestIdeVersion.toString().endsWith('.0')
-      ? latestIdeVersion.toString().slice(0, -2)
-      : latestIdeVersion;
+    const nextPlatformVersion = formatVersion(latestIdeVersion);
     // Note: We intentionally use the non-semver object variables for the `new RegExp()` since the semver objects may
     // include an extra `.0` for the 'patch' version that would not be found in the `gradle.properties` file.
     // (e.g., the string/number `2022.2` would be in the `gradle.properties` file,
@@ -111,15 +124,16 @@ export async function updateGradleProperties(latestIdeVersion: semver.SemVer): P
     const result = data
       .replace(
         new RegExp(`^pluginVersion = ${gradleProperties?.pluginVersion?.toString()}$`, 'gm'),
-        `pluginVersion = ${next_plugin_version}`
+        `pluginVersion = ${next_plugin_version}`,
       )
       .replace(
-        new RegExp(`^pluginVerifierIdeVersions = ${gradleProperties?.pluginVerifierIdeVersions?.toString()}$`, 'gm'),
-        `pluginVerifierIdeVersions = ${replaceableNewVersion}`
+        // Just grab and replace only the first version (up to the first comma)
+        new RegExp(`^pluginVerifierIdeVersions = ${formatVersion(currentPlatformVersion)}`, 'gm'),
+        `pluginVerifierIdeVersions = ${nextPlatformVersion}`,
       )
       .replace(
         new RegExp(`^platformVersion = ${gradleProperties?.platformVersion?.toString()}$`, 'gm'),
-        `platformVersion = ${replaceableNewVersion}`
+        `platformVersion = ${nextPlatformVersion}`,
       );
 
     core.debug('Updated file contents:');
@@ -143,12 +157,15 @@ export async function updateGradleProperties(latestIdeVersion: semver.SemVer): P
   }
 }
 
-export async function updateChangelog(latestIdeVersion: semver.SemVer): Promise<void> {
+export async function updateChangelog(
+  currentPlatformVersion: semver.SemVer,
+  latestIdeVersion: semver.SemVer,
+): Promise<void> {
   try {
     core.debug('Updating  [CHANGELOG.md] file...');
     core.debug(latestIdeVersion.version);
 
-    const upgradeLine = `- Upgrading IntelliJ to ${latestIdeVersion}`;
+    const upgradeLine = `- Upgrading IntelliJ from ${formatVersion(currentPlatformVersion)} to ${latestIdeVersion}`;
 
     const globber = await glob.create('./CHANGELOG.md');
     const files = await globber.glob();
@@ -169,7 +186,7 @@ export async function updateChangelog(latestIdeVersion: semver.SemVer): Promise<
       // We do *NOT* want the `g` flag, as we only want to replace the first instance
       // (which should be in the `Unreleased` section) of this section.
       new RegExp(`^### Changed$`, 'm'),
-      `### Changed\n${upgradeLine}`
+      `### Changed\n${upgradeLine}`,
     );
 
     core.debug('Updated file contents:');
@@ -201,7 +218,7 @@ function _fileContains(file: string, search: string): boolean {
 
 export async function updateGithubWorkflow(
   currentPlatformVersion: semver.SemVer,
-  latestIdeVersion: semver.SemVer
+  latestIdeVersion: semver.SemVer,
 ): Promise<void> {
   try {
     core.debug('Updating GitHub workflow files...');
@@ -217,14 +234,14 @@ export async function updateGithubWorkflow(
     });
 
     core.debug(
-      `Found ${filesToUpdate.length} files containing [ChrisCarini/intellij-platform-plugin-verifier-action]...`
+      `Found ${filesToUpdate.length} files containing [ChrisCarini/intellij-platform-plugin-verifier-action]...`,
     );
 
     for (const file of filesToUpdate) {
       const data = fs.readFileSync(file, 'utf8');
       const result = data
-        .replace(new RegExp(`ideaIC:${currentPlatformVersion}`, 'gm'), `ideaIC:${latestIdeVersion}`)
-        .replace(new RegExp(`ideaIU:${currentPlatformVersion}`, 'gm'), `ideaIU:${latestIdeVersion}`);
+        .replace(new RegExp(`ideaIC:${formatVersion(currentPlatformVersion)}`, 'gm'), `ideaIC:${latestIdeVersion}`)
+        .replace(new RegExp(`ideaIU:${formatVersion(currentPlatformVersion)}`, 'gm'), `ideaIU:${latestIdeVersion}`);
 
       core.debug('Updated file contents:');
       core.debug(result);

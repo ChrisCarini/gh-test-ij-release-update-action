@@ -2,10 +2,12 @@ import * as core from '@actions/core';
 import * as httpClient from '@actions/http-client';
 import * as semver from 'semver';
 
+export const ZERO_SEMVER = new semver.SemVer('0.0.0');
+
 export function parseSemver(input: string | undefined): semver.SemVer {
   if (input === undefined) {
     core.setFailed(`Input to parse SemVer is undefined.`);
-    return new semver.SemVer('0.0.0');
+    return ZERO_SEMVER;
   }
 
   // If we only have one dot, assume the input is
@@ -19,13 +21,24 @@ export function parseSemver(input: string | undefined): semver.SemVer {
 
   const parsed = semver.parse(input);
   if (parsed == null) {
-    core.setFailed(`Failed to parse ${input} to Semantic Versioning`);
-    return new semver.SemVer('0.0.0');
+    core.error(`Failed to parse ${input} to Semantic Versioning`);
+    return ZERO_SEMVER;
   }
   return parsed;
 }
 
-interface JetBrainsProductReleaseInfo {
+/**
+ * Format version by removing any `.0` from the end of the version string.
+ * @param version
+ */
+export function formatVersion(version: semver.SemVer): string {
+  const strVersion = version.toString();
+  return strVersion.endsWith('.0')
+    ? strVersion.slice(0, -2)
+    : strVersion;
+}
+
+export interface JetBrainsProductReleaseInfo {
   date: string;
   type: string;
   downloads: object;
@@ -45,7 +58,7 @@ export async function getLatestIntellijReleaseInfo(): Promise<JetBrainsProductRe
     // get the latest intellij release
     const client = new httpClient.HttpClient();
     const response: httpClient.HttpClientResponse = await client.get(
-      'https://data.services.jetbrains.com/products/releases?code=IIU&latest=true&release.type=release'
+      'https://data.services.jetbrains.com/products/releases?code=IIU&latest=true&release.type=release',
     );
     const body: string = await response.readBody();
     const ides = JSON.parse(body);

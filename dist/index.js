@@ -60,7 +60,7 @@ function _inc_version(version, release) {
     const incrementedVersion = semver.inc(version, release);
     if (version === null || incrementedVersion === null) {
         core.setFailed(`Failed to increment ${release} version of ${version}`);
-        return new semver.SemVer('0.0.0');
+        return versions_1.ZERO_SEMVER;
     }
     return new semver.SemVer(incrementedVersion);
 }
@@ -83,7 +83,7 @@ function _next_plugin_version(plugin_version, current_platform_version, new_plat
     return plugin_version;
 }
 function updateGradleProperties(latestIdeVersion) {
-    var _a, _b, _c, _d, _e, _f;
+    var _a, _b, _c, _d, _e;
     return __awaiter(this, void 0, void 0, function* () {
         try {
             core.debug('Updating  [gradle.properties] file...');
@@ -103,13 +103,23 @@ function updateGradleProperties(latestIdeVersion) {
             core.debug(`properties:`);
             core.debug(JSON.stringify(gradleProperties));
             const currentPluginVersion = (0, versions_1.parseSemver)((_a = gradleProperties === null || gradleProperties === void 0 ? void 0 : gradleProperties.pluginVersion) === null || _a === void 0 ? void 0 : _a.toString());
-            const currentPluginVerifierIdeVersions = (0, versions_1.parseSemver)((_b = gradleProperties === null || gradleProperties === void 0 ? void 0 : gradleProperties.pluginVerifierIdeVersions) === null || _b === void 0 ? void 0 : _b.toString());
+            // const currentPluginVerifierIdeVersions = parseSemver(gradleProperties?.pluginVerifierIdeVersions?.toString());
+            const currentPluginVerifierIdeVersions = (_b = gradleProperties === null || gradleProperties === void 0 ? void 0 : gradleProperties.pluginVerifierIdeVersions) === null || _b === void 0 ? void 0 : _b.toString().split(',').map((v) => {
+                const semVer = (0, versions_1.parseSemver)(v);
+                core.info(`${v} -> ${semVer}`);
+                return semVer;
+            }).filter((v) => {
+                if (v.compare(versions_1.ZERO_SEMVER)) {
+                    return true;
+                }
+                return false;
+            });
             const currentPlatformVersion = (0, versions_1.parseSemver)((_c = gradleProperties === null || gradleProperties === void 0 ? void 0 : gradleProperties.platformVersion) === null || _c === void 0 ? void 0 : _c.toString());
             core.debug(`currentPluginVersion:             ${currentPluginVersion}`);
             core.debug(`currentPluginVerifierIdeVersions: ${currentPluginVerifierIdeVersions}`);
             core.debug(`currentPlatformVersion:           ${currentPlatformVersion}`);
             if (semver.eq(currentPlatformVersion, latestIdeVersion)) {
-                core.info(`Skipping [gradle.properties] file, versions same (${currentPlatformVersion} == ${latestIdeVersion}).`);
+                // Skip further execution, as the platform version is already the same, and we will end the action
                 return currentPlatformVersion;
             }
             const next_plugin_version = _next_plugin_version(currentPluginVersion, currentPlatformVersion, latestIdeVersion);
@@ -118,9 +128,7 @@ function updateGradleProperties(latestIdeVersion) {
             const data = fs.readFileSync(gradle_file, 'utf8');
             core.debug('File contents:');
             core.debug(data);
-            const replaceableNewVersion = latestIdeVersion.toString().endsWith('.0')
-                ? latestIdeVersion.toString().slice(0, -2)
-                : latestIdeVersion;
+            const nextPlatformVersion = (0, versions_1.formatVersion)(latestIdeVersion);
             // Note: We intentionally use the non-semver object variables for the `new RegExp()` since the semver objects may
             // include an extra `.0` for the 'patch' version that would not be found in the `gradle.properties` file.
             // (e.g., the string/number `2022.2` would be in the `gradle.properties` file,
@@ -128,8 +136,10 @@ function updateGradleProperties(latestIdeVersion) {
             // in the `gradle.properties` file.
             const result = data
                 .replace(new RegExp(`^pluginVersion = ${(_d = gradleProperties === null || gradleProperties === void 0 ? void 0 : gradleProperties.pluginVersion) === null || _d === void 0 ? void 0 : _d.toString()}$`, 'gm'), `pluginVersion = ${next_plugin_version}`)
-                .replace(new RegExp(`^pluginVerifierIdeVersions = ${(_e = gradleProperties === null || gradleProperties === void 0 ? void 0 : gradleProperties.pluginVerifierIdeVersions) === null || _e === void 0 ? void 0 : _e.toString()}$`, 'gm'), `pluginVerifierIdeVersions = ${replaceableNewVersion}`)
-                .replace(new RegExp(`^platformVersion = ${(_f = gradleProperties === null || gradleProperties === void 0 ? void 0 : gradleProperties.platformVersion) === null || _f === void 0 ? void 0 : _f.toString()}$`, 'gm'), `platformVersion = ${replaceableNewVersion}`);
+                .replace(
+            // Just grab and replace only the first version (up to the first comma)
+            new RegExp(`^pluginVerifierIdeVersions = ${(0, versions_1.formatVersion)(currentPlatformVersion)}`, 'gm'), `pluginVerifierIdeVersions = ${nextPlatformVersion}`)
+                .replace(new RegExp(`^platformVersion = ${(_e = gradleProperties === null || gradleProperties === void 0 ? void 0 : gradleProperties.platformVersion) === null || _e === void 0 ? void 0 : _e.toString()}$`, 'gm'), `platformVersion = ${nextPlatformVersion}`);
             core.debug('Updated file contents:');
             core.debug(result);
             yield fs.promises.writeFile(gradle_file, result, 'utf8');
@@ -148,12 +158,12 @@ function updateGradleProperties(latestIdeVersion) {
     });
 }
 exports.updateGradleProperties = updateGradleProperties;
-function updateChangelog(latestIdeVersion) {
+function updateChangelog(currentPlatformVersion, latestIdeVersion) {
     return __awaiter(this, void 0, void 0, function* () {
         try {
             core.debug('Updating  [CHANGELOG.md] file...');
             core.debug(latestIdeVersion.version);
-            const upgradeLine = `- Upgrading IntelliJ to ${latestIdeVersion}`;
+            const upgradeLine = `- Upgrading IntelliJ from ${(0, versions_1.formatVersion)(currentPlatformVersion)} to ${latestIdeVersion}`;
             const globber = yield glob.create('./CHANGELOG.md');
             const files = yield globber.glob();
             core.debug(`Found ${files.length} files`);
@@ -208,8 +218,8 @@ function updateGithubWorkflow(currentPlatformVersion, latestIdeVersion) {
             for (const file of filesToUpdate) {
                 const data = fs.readFileSync(file, 'utf8');
                 const result = data
-                    .replace(new RegExp(`ideaIC:${currentPlatformVersion}`, 'gm'), `ideaIC:${latestIdeVersion}`)
-                    .replace(new RegExp(`ideaIU:${currentPlatformVersion}`, 'gm'), `ideaIU:${latestIdeVersion}`);
+                    .replace(new RegExp(`ideaIC:${(0, versions_1.formatVersion)(currentPlatformVersion)}`, 'gm'), `ideaIC:${latestIdeVersion}`)
+                    .replace(new RegExp(`ideaIU:${(0, versions_1.formatVersion)(currentPlatformVersion)}`, 'gm'), `ideaIU:${latestIdeVersion}`);
                 core.debug('Updated file contents:');
                 core.debug(result);
                 yield fs.promises.writeFile(file, result, 'utf8');
@@ -270,14 +280,15 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.getLatestIntellijReleaseInfo = exports.parseSemver = void 0;
+exports.getLatestIntellijReleaseInfo = exports.formatVersion = exports.parseSemver = exports.ZERO_SEMVER = void 0;
 const core = __importStar(__nccwpck_require__(2186));
 const httpClient = __importStar(__nccwpck_require__(6255));
 const semver = __importStar(__nccwpck_require__(1383));
+exports.ZERO_SEMVER = new semver.SemVer('0.0.0');
 function parseSemver(input) {
     if (input === undefined) {
         core.setFailed(`Input to parse SemVer is undefined.`);
-        return new semver.SemVer('0.0.0');
+        return exports.ZERO_SEMVER;
     }
     // If we only have one dot, assume the input is
     // a major version (ie, 2022.2, aka 2022.2.0) and
@@ -289,12 +300,23 @@ function parseSemver(input) {
     }
     const parsed = semver.parse(input);
     if (parsed == null) {
-        core.setFailed(`Failed to parse ${input} to Semantic Versioning`);
-        return new semver.SemVer('0.0.0');
+        core.error(`Failed to parse ${input} to Semantic Versioning`);
+        return exports.ZERO_SEMVER;
     }
     return parsed;
 }
 exports.parseSemver = parseSemver;
+/**
+ * Format version by removing any `.0` from the end of the version string.
+ * @param version
+ */
+function formatVersion(version) {
+    const strVersion = version.toString();
+    return strVersion.endsWith('.0')
+        ? strVersion.slice(0, -2)
+        : strVersion;
+}
+exports.formatVersion = formatVersion;
 function getLatestIntellijReleaseInfo() {
     return __awaiter(this, void 0, void 0, function* () {
         try {
@@ -364,6 +386,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 const core = __importStar(__nccwpck_require__(2186));
 const github = __importStar(__nccwpck_require__(5438));
+const semver = __importStar(__nccwpck_require__(1383));
 const simple_git_1 = __importDefault(__nccwpck_require__(9103));
 const files_1 = __nccwpck_require__(2821);
 const versions_1 = __nccwpck_require__(5366);
@@ -399,8 +422,12 @@ function run() {
             // update gradle.properties file
             const currentPlatformVersion = yield (0, files_1.updateGradleProperties)(latestVersion);
             core.debug(`Current Platform Version: ${currentPlatformVersion}`);
+            if (semver.eq(currentPlatformVersion, latestVersion)) {
+                core.info(`Skipping update, current and next platform versions are the same (${currentPlatformVersion} == ${latestVersion}).`);
+                return;
+            }
             // update CHANGELOG.md
-            yield (0, files_1.updateChangelog)(latestVersion);
+            yield (0, files_1.updateChangelog)(currentPlatformVersion, latestVersion);
             // update github workflows
             yield (0, files_1.updateGithubWorkflow)(currentPlatformVersion, latestVersion);
             core.debug('BEFORE: check file change count');
@@ -419,7 +446,7 @@ function run() {
             core.setSecret(githubToken);
             const octokit = github.getOctokit(githubToken);
             core.info(`github.context:`);
-            core.info(github.context.eventName);
+            core.info(JSON.stringify(github.context));
             core.info(`github.context.eventName: ${github.context.eventName}`);
             // if (github.context.eventName === 'push') {
             //   const pushPayload = github.context.payload as PushEvent
@@ -470,16 +497,16 @@ function run() {
                     .addConfig('http.sslVerify', 'false')
                     .addConfig('user.name', 'ChrisCarini')
                     .addConfig('user.email', '6374067+chriscarini@users.noreply.github.com')
-                    .exec(() => core.debug(`Starting [git commit -m "Upgrading IntelliJ to ${latestVersion}"]...`))
-                    .commit(`Upgrading IntelliJ to ${latestVersion}`)
-                    .exec(() => core.debug(`Finished [git commit -m "Upgrading IntelliJ to ${latestVersion}"]...`))
+                    .exec(() => core.debug(`Starting [git commit -m "Upgrading IntelliJ from ${(0, versions_1.formatVersion)(currentPlatformVersion)} to ${latestVersion}"]...`))
+                    .commit(`Upgrading IntelliJ from ${(0, versions_1.formatVersion)(currentPlatformVersion)} to ${latestVersion}`)
+                    .exec(() => core.debug(`Finished [git commit -m "Upgrading IntelliJ from ${(0, versions_1.formatVersion)(currentPlatformVersion)} to ${latestVersion}"]...`))
                     .exec(() => core.debug(`Before [git push -u origin ${newBranchName}"]..`))
                     .push(['-u', 'origin', newBranchName])
                     .exec(() => core.debug(`After [git push -u origin ${newBranchName}"]...`));
                 core.debug(`PUSHED BRANCH [${newBranchName}]!!!`);
             }
             const prBody = `
-# Upgrading IntelliJ to ${latestVersion}
+# Upgrading IntelliJ from ${(0, versions_1.formatVersion)(currentPlatformVersion)} to ${latestVersion}
 
 You can find the change log here: ${releaseInfo.notesLink}
 
@@ -487,16 +514,19 @@ You can find the change log here: ${releaseInfo.notesLink}
 ${releaseInfo.whatsnew}
     `;
             if (!currentPullRequestBranchNames.includes(newBranchName)) {
-                core.debug(`${newBranchName} - PR DOES NOT EXIST; CREATE`);
-                yield octokit.rest.pulls.create({
+                const baseBranch = github.context.ref;
+                core.debug(`${newBranchName} - PR DOES NOT EXIST; CREATE (against base branch ${baseBranch})`);
+                const foo = yield octokit.rest.pulls.create({
                     owner: github.context.repo.owner,
                     repo: github.context.repo.repo,
-                    title: `Upgrading IntelliJ to ${latestVersion}`,
+                    title: `Upgrading IntelliJ from ${(0, versions_1.formatVersion)(currentPlatformVersion)} to ${latestVersion}`,
                     body: prBody,
                     head: newBranchName,
-                    base: 'master',
+                    base: baseBranch,
                 });
+                core.debug(JSON.stringify(foo));
                 core.debug(`OPENED PR FOR BRANCH [${newBranchName}]!!!`);
+                core.info(`PR Opened: ${foo.data.html_url}`);
             }
         }
         catch (error) {
@@ -6940,7 +6970,7 @@ function setup(env) {
 	createDebug.disable = disable;
 	createDebug.enable = enable;
 	createDebug.enabled = enabled;
-	createDebug.humanize = __nccwpck_require__(900);
+	createDebug.humanize = __nccwpck_require__(9992);
 	createDebug.destroy = destroy;
 
 	Object.keys(env).forEach(key => {
@@ -8878,7 +8908,7 @@ function regExpEscape (s) {
 
 /***/ }),
 
-/***/ 900:
+/***/ 9992:
 /***/ ((module) => {
 
 /**
@@ -13148,7 +13178,7 @@ module.exports = gte
 
 /***/ }),
 
-/***/ 929:
+/***/ 900:
 /***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
 
 const SemVer = __nccwpck_require__(8088)
@@ -13362,7 +13392,7 @@ module.exports = {
   parse: __nccwpck_require__(5925),
   valid: __nccwpck_require__(9601),
   clean: __nccwpck_require__(8848),
-  inc: __nccwpck_require__(929),
+  inc: __nccwpck_require__(900),
   diff: __nccwpck_require__(4297),
   major: __nccwpck_require__(6688),
   minor: __nccwpck_require__(8447),
@@ -14570,6 +14600,7 @@ var init_exit_codes = __esm({
     ExitCodes = /* @__PURE__ */ ((ExitCodes2) => {
       ExitCodes2[ExitCodes2["SUCCESS"] = 0] = "SUCCESS";
       ExitCodes2[ExitCodes2["ERROR"] = 1] = "ERROR";
+      ExitCodes2[ExitCodes2["NOT_FOUND"] = -2] = "NOT_FOUND";
       ExitCodes2[ExitCodes2["UNCLEAN"] = 128] = "UNCLEAN";
       return ExitCodes2;
     })(ExitCodes || {});
@@ -14715,7 +14746,7 @@ var init_task_options = __esm({
 function callTaskParser(parser3, streams) {
   return parser3(streams.stdOut, streams.stdErr);
 }
-function parseStringResponse(result, parsers11, texts, trim = true) {
+function parseStringResponse(result, parsers12, texts, trim = true) {
   asArray(texts).forEach((text) => {
     for (let lines = toLinesWithContent(text, trim), i = 0, max = lines.length; i < max; i++) {
       const line = (offset = 0) => {
@@ -14724,7 +14755,7 @@ function parseStringResponse(result, parsers11, texts, trim = true) {
         }
         return lines[i + offset];
       };
-      parsers11.some(({ parse }) => parse(line, result));
+      parsers12.some(({ parse }) => parse(line, result));
     }
   });
   return result;
@@ -15352,6 +15383,70 @@ var init_api = __esm({
   }
 });
 
+// src/lib/plugins/abort-plugin.ts
+function abortPlugin(signal) {
+  if (!signal) {
+    return;
+  }
+  const onSpawnAfter = {
+    type: "spawn.after",
+    action(_data, context) {
+      function kill() {
+        context.kill(new GitPluginError(void 0, "abort", "Abort signal received"));
+      }
+      signal.addEventListener("abort", kill);
+      context.spawned.on("close", () => signal.removeEventListener("abort", kill));
+    }
+  };
+  const onSpawnBefore = {
+    type: "spawn.before",
+    action(_data, context) {
+      if (signal.aborted) {
+        context.kill(new GitPluginError(void 0, "abort", "Abort already signaled"));
+      }
+    }
+  };
+  return [onSpawnBefore, onSpawnAfter];
+}
+var init_abort_plugin = __esm({
+  "src/lib/plugins/abort-plugin.ts"() {
+    init_git_plugin_error();
+  }
+});
+
+// src/lib/plugins/block-unsafe-operations-plugin.ts
+function isConfigSwitch(arg) {
+  return arg.trim().toLowerCase() === "-c";
+}
+function preventProtocolOverride(arg, next) {
+  if (!isConfigSwitch(arg)) {
+    return;
+  }
+  if (!/^\s*protocol(.[a-z]+)?.allow/.test(next)) {
+    return;
+  }
+  throw new GitPluginError(void 0, "unsafe", "Configuring protocol.allow is not permitted without enabling allowUnsafeExtProtocol");
+}
+function blockUnsafeOperationsPlugin({
+  allowUnsafeProtocolOverride = false
+} = {}) {
+  return {
+    type: "spawn.args",
+    action(args, _context) {
+      args.forEach((current, index) => {
+        const next = index < args.length ? args[index + 1] : "";
+        allowUnsafeProtocolOverride || preventProtocolOverride(current, next);
+      });
+      return args;
+    }
+  };
+}
+var init_block_unsafe_operations_plugin = __esm({
+  "src/lib/plugins/block-unsafe-operations-plugin.ts"() {
+    init_git_plugin_error();
+  }
+});
+
 // src/lib/plugins/command-config-prefixing-plugin.ts
 function commandConfigPrefixingPlugin(configuration) {
   const prefix = prefixedArray(configuration, "-c");
@@ -15624,6 +15719,8 @@ var init_timout_plugin = __esm({
 // src/lib/plugins/index.ts
 var init_plugins = __esm({
   "src/lib/plugins/index.ts"() {
+    init_abort_plugin();
+    init_block_unsafe_operations_plugin();
     init_command_config_prefixing_plugin();
     init_completion_detection_plugin();
     init_error_detection_plugin();
@@ -15894,9 +15991,22 @@ var init_git_executor_chain = __esm({
           return new Promise((done) => {
             const stdOut = [];
             const stdErr = [];
-            let rejection;
             logger.info(`%s %o`, command, args);
             logger("%O", spawnOptions);
+            let rejection = this._beforeSpawn(task, args);
+            if (rejection) {
+              return done({
+                stdOut,
+                stdErr,
+                exitCode: 9901,
+                rejection
+              });
+            }
+            this._plugins.exec("spawn.before", void 0, __spreadProps(__spreadValues({}, pluginContext(task, args)), {
+              kill(reason) {
+                rejection = reason || rejection;
+              }
+            }));
             const spawned = (0, import_child_process.spawn)(command, args, spawnOptions);
             spawned.stdout.on("data", onDataReceived(stdOut, "stdOut", logger, outputLogger.step("stdOut")));
             spawned.stderr.on("data", onDataReceived(stdErr, "stdErr", logger, outputLogger.step("stdErr")));
@@ -15925,6 +16035,15 @@ var init_git_executor_chain = __esm({
             }));
           });
         });
+      }
+      _beforeSpawn(task, args) {
+        let rejection;
+        this._plugins.exec("spawn.before", void 0, __spreadProps(__spreadValues({}, pluginContext(task, args)), {
+          kill(reason) {
+            rejection = reason || rejection;
+          }
+        }));
+        return rejection;
       }
     };
   }
@@ -16429,9 +16548,9 @@ function parseLogOptions(opt = {}, customArgs = []) {
   if (maxCount) {
     command.push(`--max-count=${maxCount}`);
   }
-  if (opt.from && opt.to) {
+  if (opt.from || opt.to) {
     const rangeOperator = opt.symmetric !== false ? "..." : "..";
-    suffix.push(`${opt.from}${rangeOperator}${opt.to}`);
+    suffix.push(`${opt.from || ""}${rangeOperator}${opt.to || ""}`);
   }
   if (filterString(opt.file)) {
     suffix.push("--follow", opt.file);
@@ -17033,6 +17152,64 @@ var init_status = __esm({
   }
 });
 
+// src/lib/tasks/version.ts
+function versionResponse(major = 0, minor = 0, patch = 0, agent = "", installed = true) {
+  return Object.defineProperty({
+    major,
+    minor,
+    patch,
+    agent,
+    installed
+  }, "toString", {
+    value() {
+      return `${this.major}.${this.minor}.${this.patch}`;
+    },
+    configurable: false,
+    enumerable: false
+  });
+}
+function notInstalledResponse() {
+  return versionResponse(0, 0, 0, "", false);
+}
+function version_default() {
+  return {
+    version() {
+      return this._runTask({
+        commands: ["--version"],
+        format: "utf-8",
+        parser: versionParser,
+        onError(result, error, done, fail) {
+          if (result.exitCode === -2 /* NOT_FOUND */) {
+            return done(Buffer.from(NOT_INSTALLED));
+          }
+          fail(error);
+        }
+      });
+    }
+  };
+}
+function versionParser(stdOut) {
+  if (stdOut === NOT_INSTALLED) {
+    return notInstalledResponse();
+  }
+  return parseStringResponse(versionResponse(0, 0, 0, stdOut), parsers7, stdOut);
+}
+var NOT_INSTALLED, parsers7;
+var init_version = __esm({
+  "src/lib/tasks/version.ts"() {
+    init_utils();
+    NOT_INSTALLED = "installed=false";
+    parsers7 = [
+      new LineParser(/version (\d+)\.(\d+)\.(\d+)(?:\s*\((.+)\))?/, (result, [major, minor, patch, agent = ""]) => {
+        Object.assign(result, versionResponse(asNumber(major), asNumber(minor), asNumber(patch), agent));
+      }),
+      new LineParser(/version (\d+)\.(\d+)\.(\D+)(.+)?$/, (result, [major, minor, patch, agent = ""]) => {
+        Object.assign(result, versionResponse(asNumber(major), asNumber(minor), patch, agent));
+      })
+    ];
+  }
+});
+
 // src/lib/simple-git-api.ts
 var simple_git_api_exports = {};
 __export(simple_git_api_exports, {
@@ -17053,6 +17230,7 @@ var init_simple_git_api = __esm({
     init_push();
     init_status();
     init_task();
+    init_version();
     init_utils();
     SimpleGitApi = class {
       constructor(_executor) {
@@ -17116,7 +17294,7 @@ var init_simple_git_api = __esm({
         return this._runTask(statusTask(getTrailingOptions(arguments)), trailingFunctionArgument(arguments));
       }
     };
-    Object.assign(SimpleGitApi.prototype, commit_default(), config_default(), grep_default(), log_default());
+    Object.assign(SimpleGitApi.prototype, commit_default(), config_default(), grep_default(), log_default(), version_default());
   }
 });
 
@@ -17223,14 +17401,14 @@ var init_BranchDeleteSummary = __esm({
 function hasBranchDeletionError(data, processExitCode) {
   return processExitCode === 1 /* ERROR */ && deleteErrorRegex.test(data);
 }
-var deleteSuccessRegex, deleteErrorRegex, parsers7, parseBranchDeletions;
+var deleteSuccessRegex, deleteErrorRegex, parsers8, parseBranchDeletions;
 var init_parse_branch_delete = __esm({
   "src/lib/parsers/parse-branch-delete.ts"() {
     init_BranchDeleteSummary();
     init_utils();
     deleteSuccessRegex = /(\S+)\s+\(\S+\s([^)]+)\)/;
     deleteErrorRegex = /^error[^']+'([^']+)'/m;
-    parsers7 = [
+    parsers8 = [
       new LineParser(deleteSuccessRegex, (result, [branch, hash]) => {
         const deletion = branchDeletionSuccess(branch, hash);
         result.all.push(deletion);
@@ -17244,7 +17422,7 @@ var init_parse_branch_delete = __esm({
       })
     ];
     parseBranchDeletions = (stdOut, stdErr) => {
-      return parseStringResponse(new BranchDeletionBatch(), parsers7, [stdOut, stdErr]);
+      return parseStringResponse(new BranchDeletionBatch(), parsers8, [stdOut, stdErr]);
     };
   }
 });
@@ -17283,14 +17461,14 @@ function branchStatus(input) {
   return input ? input.charAt(0) : "";
 }
 function parseBranchSummary(stdOut) {
-  return parseStringResponse(new BranchSummaryResult(), parsers8, stdOut);
+  return parseStringResponse(new BranchSummaryResult(), parsers9, stdOut);
 }
-var parsers8;
+var parsers9;
 var init_parse_branch = __esm({
   "src/lib/parsers/parse-branch.ts"() {
     init_BranchSummary();
     init_utils();
-    parsers8 = [
+    parsers9 = [
       new LineParser(/^([*+]\s)?\((?:HEAD )?detached (?:from|at) (\S+)\)\s+([a-z0-9]+)\s(.*)$/, (result, [current, name, commit, label]) => {
         result.push(branchStatus(current), true, name, commit, label);
       }),
@@ -17450,13 +17628,13 @@ function parseFetchResult(stdOut, stdErr) {
     updated: [],
     deleted: []
   };
-  return parseStringResponse(result, parsers9, [stdOut, stdErr]);
+  return parseStringResponse(result, parsers10, [stdOut, stdErr]);
 }
-var parsers9;
+var parsers10;
 var init_parse_fetch = __esm({
   "src/lib/parsers/parse-fetch.ts"() {
     init_utils();
-    parsers9 = [
+    parsers10 = [
       new LineParser(/From (.+)$/, (result, [remote]) => {
         result.remote = remote;
       }),
@@ -17521,13 +17699,13 @@ var init_fetch = __esm({
 
 // src/lib/parsers/parse-move.ts
 function parseMoveResult(stdOut) {
-  return parseStringResponse({ moves: [] }, parsers10, stdOut);
+  return parseStringResponse({ moves: [] }, parsers11, stdOut);
 }
-var parsers10;
+var parsers11;
 var init_parse_move = __esm({
   "src/lib/parsers/parse-move.ts"() {
     init_utils();
-    parsers10 = [
+    parsers11 = [
       new LineParser(/^Renaming (.+) to (.+)$/, (result, [from, to]) => {
         result.moves.push({ from, to });
       })
@@ -18119,7 +18297,9 @@ function gitInstanceFactory(baseDir, options) {
   if (Array.isArray(config.config)) {
     plugins.add(commandConfigPrefixingPlugin(config.config));
   }
+  plugins.add(blockUnsafeOperationsPlugin(config.unsafe));
   plugins.add(completionDetectionPlugin(config.completion));
+  config.abort && plugins.add(abortPlugin(config.abort));
   config.progress && plugins.add(progressMonitorPlugin(config.progress));
   config.timeout && plugins.add(timeoutPlugin(config.timeout));
   config.spawnOptions && plugins.add(spawnOptionsPlugin(config.spawnOptions));

@@ -4,8 +4,12 @@ import { WorkflowDispatchEvent } from '@octokit/webhooks-definitions/schema';
 import * as semver from 'semver';
 import simpleGit, { StatusResult } from 'simple-git';
 import { updateChangelog, updateGithubWorkflow, updateGradleProperties } from './jetbrains/files';
-import { getLatestIntellijReleaseInfo, parseSemver } from './jetbrains/versions';
-import { JetBrainsProductReleaseInfo } from './testtttt';
+import {
+  formatVersion,
+  getLatestIntellijReleaseInfo,
+  JetBrainsProductReleaseInfo,
+  parseSemver,
+} from './jetbrains/versions';
 
 async function checkFileChangeCount(): Promise<number> {
   core.debug('BEFORE: simpleGit().status()');
@@ -41,8 +45,13 @@ async function run(): Promise<void> {
     const currentPlatformVersion = await updateGradleProperties(latestVersion);
     core.debug(`Current Platform Version: ${currentPlatformVersion}`);
 
+    if (semver.eq(currentPlatformVersion, latestVersion)) {
+      core.info(`Skipping update, current and next platform versions are the same (${currentPlatformVersion} == ${latestVersion}).`);
+      return;
+    }
+
     // update CHANGELOG.md
-    await updateChangelog(latestVersion);
+    await updateChangelog(currentPlatformVersion, latestVersion);
 
     // update github workflows
     await updateGithubWorkflow(currentPlatformVersion, latestVersion);
@@ -67,7 +76,7 @@ async function run(): Promise<void> {
     const octokit = github.getOctokit(githubToken);
 
     core.info(`github.context:`);
-    core.info(github.context.eventName);
+    core.info(JSON.stringify(github.context));
     core.info(`github.context.eventName: ${github.context.eventName}`);
 
     // if (github.context.eventName === 'push') {
@@ -126,9 +135,9 @@ async function run(): Promise<void> {
         .addConfig('http.sslVerify', 'false')
         .addConfig('user.name', 'ChrisCarini')
         .addConfig('user.email', '6374067+chriscarini@users.noreply.github.com')
-        .exec(() => core.debug(`Starting [git commit -m "Upgrading IntelliJ to ${latestVersion}"]...`))
-        .commit(`Upgrading IntelliJ to ${latestVersion}`)
-        .exec(() => core.debug(`Finished [git commit -m "Upgrading IntelliJ to ${latestVersion}"]...`))
+        .exec(() => core.debug(`Starting [git commit -m "Upgrading IntelliJ from ${formatVersion(currentPlatformVersion)} to ${latestVersion}"]...`))
+        .commit(`Upgrading IntelliJ from ${formatVersion(currentPlatformVersion)} to ${latestVersion}`)
+        .exec(() => core.debug(`Finished [git commit -m "Upgrading IntelliJ from ${formatVersion(currentPlatformVersion)} to ${latestVersion}"]...`))
         .exec(() => core.debug(`Before [git push -u origin ${newBranchName}"]..`))
         .push(['-u', 'origin', newBranchName])
         .exec(() => core.debug(`After [git push -u origin ${newBranchName}"]...`));
@@ -137,7 +146,7 @@ async function run(): Promise<void> {
     }
 
     const prBody = `
-# Upgrading IntelliJ to ${latestVersion}
+# Upgrading IntelliJ from ${formatVersion(currentPlatformVersion)} to ${latestVersion}
 
 You can find the change log here: ${releaseInfo.notesLink}
 
@@ -146,16 +155,19 @@ ${releaseInfo.whatsnew}
     `;
 
     if (!currentPullRequestBranchNames.includes(newBranchName)) {
-      core.debug(`${newBranchName} - PR DOES NOT EXIST; CREATE`);
-      await octokit.rest.pulls.create({
+      const baseBranch = github.context.ref;
+      core.debug(`${newBranchName} - PR DOES NOT EXIST; CREATE (against base branch ${baseBranch})`);
+      const foo = await octokit.rest.pulls.create({
         owner: github.context.repo.owner,
         repo: github.context.repo.repo,
-        title: `Upgrading IntelliJ to ${latestVersion}`,
+        title: `Upgrading IntelliJ from ${formatVersion(currentPlatformVersion)} to ${latestVersion}`,
         body: prBody,
         head: newBranchName,
-        base: 'master',
+        base: baseBranch,
       });
+      core.debug(JSON.stringify(foo));
       core.debug(`OPENED PR FOR BRANCH [${newBranchName}]!!!`);
+      core.info(`PR Opened: ${foo.data.html_url}`)
     }
   } catch (error) {
     if (error instanceof Error) core.setFailed(error.message);
