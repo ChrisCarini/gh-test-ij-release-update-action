@@ -1,43 +1,41 @@
-import * as core from '@actions/core';
-import * as httpClient from '@actions/http-client';
+import * as github from '@actions/github';
 
-export interface JetBrainsProductReleaseInfo {
-  date: string;
-  type: string;
-  // downloads: {},
-  // patches: {},
-  notesLink: string;
-  licenseRequired: boolean;
-  version: string;
-  majorVersion: string;
-  build: string;
-  whatsnew: string;
-  uninstallFeedbackLinks: object;
-  printableReleaseType: object;
+// async function run(): Promise<void> {
+//   const pluginVerifierIdeVersions = '2022.2.1,2022.2.2,LATEST-EAP-SNAPSHOT';
+//   const currentPluginVerifierIdeVersions = pluginVerifierIdeVersions
+//     .split(',')
+//     .map((v) => {
+//       core.info(v);
+//       const semVer = parseSemver(v);
+//       core.info(JSON.stringify(semVer));
+//       return semVer;
+//     })
+//     .filter((v) => {
+//       if (v.compare(ZERO_SEMVER)) {
+//         return true;
+//       }
+//       return false;
+//     });
+//   core.debug(`currentPluginVerifierIdeVersions: ${currentPluginVerifierIdeVersions}`);
+//   core.debug(
+//     `highest: ${currentPluginVerifierIdeVersions
+//       .sort((a, b) => {
+//         return -1 * a.compare(b);
+//       })
+//       .at(0)}`
+//   );
+// }
+async function run2(): Promise<void> {
+  const octokit = github.getOctokit('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');
+  const { data } = await octokit.rest.users.getAuthenticated();
+  // const email = data.email
+  // const username = data.login
+
+  console.log(JSON.stringify(data, null, 2));
+
+  // 6374067+ChrisCarini@users.noreply.github.com
+  const email = `${data.id}+${data.login}@users.noreply.github.com`;
+  console.log(email);
 }
 
-export async function getLatestIntellijReleaseInfo(): Promise<JetBrainsProductReleaseInfo> {
-  try {
-    // get the latest intellij release
-    const client = new httpClient.HttpClient();
-    const response: httpClient.HttpClientResponse = await client.get(
-      'https://data.services.jetbrains.com/products/releases?code=IIU&latest=true&release.type=release'
-    );
-    const body: string = await response.readBody();
-    const ides = JSON.parse(body);
-
-    return ides['IIU'] as JetBrainsProductReleaseInfo;
-  } catch (error) {
-    core.setFailed('Error getting the latest version of IntelliJ. Exiting.');
-    if (error instanceof Error) core.setFailed(error.message);
-    return process.exit(1);
-  }
-}
-
-async function run(): Promise<void> {
-  // get the latest intellij release
-  const resp: JetBrainsProductReleaseInfo = await getLatestIntellijReleaseInfo();
-  console.log(resp);
-}
-
-run();
+run2();
