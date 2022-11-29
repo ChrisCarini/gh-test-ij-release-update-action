@@ -189,9 +189,11 @@ ${releaseInfo.whatsnew}
   }
 }
 
+core.debug('Starting...');
 run()
   .then(() => {})
   .catch((err) => {
     core.setFailed(err.message);
     core.debug(err);
   });
+core.debug('Finished.');
