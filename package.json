@@ -35,7 +35,7 @@
     "@actions/http-client": "^2.0.1",
     "@octokit/webhooks-types": "^6.10.0",
     "properties": "^1.2.1",
-    "semver": "^7.3.8",
+    "semver": "^7.5.2",
     "simple-git": "^3.18.0"
   },
   "devDependencies": {
