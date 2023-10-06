@@ -5,6 +5,7 @@ import { readFileSync } from 'fs';
 import * as properties from 'properties';
 import * as semver from 'semver';
 import { simpleGit } from 'simple-git';
+// eslint-disable-next-line node/no-missing-import
 import { formatVersion, parseSemver, ZERO_SEMVER } from './versions';
 
 async function git_add(file: string): Promise<void> {

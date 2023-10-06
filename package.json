@@ -34,6 +34,7 @@
     "@actions/glob": "^0.4.0",
     "@actions/http-client": "^2.1.1",
     "@octokit/webhooks-types": "^7.3.1",
+    "@typescript-eslint/eslint-plugin": "^6.7.4",
     "properties": "^1.2.1",
     "semver": "^7.5.2",
     "simple-git": "^3.18.0"
@@ -41,7 +42,7 @@
   "devDependencies": {
     "@types/node": "^18.11.18",
     "@types/semver": "^7.3.13",
-    "@typescript-eslint/parser": "^5.49.0",
+    "@typescript-eslint/parser": "^6.7.4",
     "@vercel/ncc": "^0.38.0",
     "eslint": "^8.50.0",
     "eslint-plugin-github": "^4.10.1",
