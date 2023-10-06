@@ -34,6 +34,7 @@ async function checkFileChangeCount(): Promise<number> {
 
 async function run(): Promise<void> {
   try {
+    core.info('Starting...');
     // get the latest intellij release
     const releaseInfo: JetBrainsProductReleaseInfo = await getLatestIntellijReleaseInfo();
     core.debug(`Latest IntelliJ Release Info:`);
