@@ -22,6 +22,13 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        if: ${{ github.event_name != 'pull_request' }}
+      - uses: actions/checkout@v4
+        if: ${{ github.event_name == 'pull_request' }}
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+          repository: ${{ github.event.pull_request.head.repo.full_name }}
+          token: ${{ secrets.GH_PAT_REPO_WORKFLOW_SCOPE }}
 
       - name: Set Node.js 16.x
         uses: actions/setup-node@v3.8.1
@@ -41,14 +48,18 @@ jobs:
           if [ "$(git diff --ignore-space-at-eol dist/ | wc -l)" -gt "0" ]; then
             echo "Detected uncommitted changes after build.  See status below:"
             git diff
-            git config --global user.email "6374067+ChrisCarini@users.noreply.github.com"
-            git config --global user.name "ChrisCarini"
-            git add .
-            git commit -m 'fixing dist'
-            git push
             exit 1
           fi
         id: diff
+
+      - name: Push changes back to PR branch
+        if: ${{ failure() && steps.diff.conclusion == 'failure' && github.event_name == 'pull_request' }}
+        run: |
+          git config --global user.email "6374067+ChrisCarini@users.noreply.github.com"
+          git config --global user.name "ChrisCarini"
+          git add ./dist/
+          git commit -m 'fixing dist'
+          git push
 
       # If index.js was different than expected, upload the expected version as an artifact
       - uses: actions/upload-artifact@v3
