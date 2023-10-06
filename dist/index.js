@@ -409,6 +409,7 @@ function checkFileChangeCount() {
 function run() {
     return __awaiter(this, void 0, void 0, function* () {
         try {
+            core.info('Starting...');
             // get the latest intellij release
             const releaseInfo = yield (0, versions_1.getLatestIntellijReleaseInfo)();
             core.debug(`Latest IntelliJ Release Info:`);
