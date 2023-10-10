@@ -40,7 +40,7 @@
     "simple-git": "^3.18.0"
   },
   "devDependencies": {
-    "@types/node": "^20.8.2",
+    "@types/node": "^20.8.3",
     "@types/semver": "^7.3.13",
     "@typescript-eslint/parser": "^6.7.4",
     "@vercel/ncc": "^0.38.0",
