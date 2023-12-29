@@ -37,7 +37,7 @@
     "@typescript-eslint/eslint-plugin": "^6.16.0",
     "properties": "^1.2.1",
     "semver": "^7.5.2",
-    "simple-git": "^3.21.0"
+    "simple-git": "^3.22.0"
   },
   "devDependencies": {
     "@types/node": "^20.10.5",
