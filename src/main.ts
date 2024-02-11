@@ -41,8 +41,17 @@ async function run(): Promise<void> {
     const latestVersion: semver.SemVer = parseSemver(releaseInfo.version);
     core.debug(`Latest IntelliJ Version: ${latestVersion}`);
 
+    const gradlePropertyVersionName = core.getInput('gradlePropertyVersionName');
+    core.debug(`gradlePropertyVersionName: ${gradlePropertyVersionName}`);
+    if (gradlePropertyVersionName !== 'pluginVersion' && gradlePropertyVersionName !== 'libraryVersion') {
+      core.setFailed(
+        `Invalid gradlePropertyVersionName: [${gradlePropertyVersionName}] Pick either 'pluginVersion' or 'libraryVersion'.`
+      );
+      return;
+    }
+
     // update gradle.properties file
-    const currentPlatformVersion = await updateGradleProperties(latestVersion);
+    const currentPlatformVersion = await updateGradleProperties(latestVersion, gradlePropertyVersionName);
     core.debug(`Current Platform Version: ${currentPlatformVersion}`);
 
     if (semver.eq(currentPlatformVersion, latestVersion)) {

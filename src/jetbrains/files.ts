@@ -50,7 +50,10 @@ function _next_plugin_version(
   return plugin_version;
 }
 
-export async function updateGradleProperties(latestIdeVersion: semver.SemVer): Promise<semver.SemVer> {
+export async function updateGradleProperties(
+  latestIdeVersion: semver.SemVer,
+  gradlePropertyVersionName: 'pluginVersion' | 'libraryVersion'
+): Promise<semver.SemVer> {
   try {
     core.debug('Updating  [gradle.properties] file...');
     core.debug(latestIdeVersion.version);
@@ -65,6 +68,7 @@ export async function updateGradleProperties(latestIdeVersion: semver.SemVer): P
 
     interface JBGradlePropertiesFile {
       pluginVersion?: string | number;
+      libraryVersion?: string | number;
       pluginVerifierIdeVersions?: string | number;
       platformVersion?: string | number;
     }
@@ -76,7 +80,9 @@ export async function updateGradleProperties(latestIdeVersion: semver.SemVer): P
     });
     core.debug(`properties:`);
     core.debug(JSON.stringify(gradleProperties));
-    const currentPluginVersion = parseSemver(gradleProperties?.pluginVersion?.toString());
+
+    const version = gradleProperties?.[gradlePropertyVersionName]?.toString();
+    const currentVersion = parseSemver(version);
 
     // const currentPluginVerifierIdeVersions = parseSemver(gradleProperties?.pluginVerifierIdeVersions?.toString());
     const currentPluginVerifierIdeVersions = gradleProperties?.pluginVerifierIdeVersions
@@ -95,7 +101,7 @@ export async function updateGradleProperties(latestIdeVersion: semver.SemVer): P
       });
 
     const currentPlatformVersion = parseSemver(gradleProperties?.platformVersion?.toString());
-    core.debug(`currentPluginVersion:             ${currentPluginVersion}`);
+    core.debug(`currentVersion:                   ${currentVersion} ( (${gradlePropertyVersionName}) )`);
     core.debug(`currentPluginVerifierIdeVersions: ${currentPluginVerifierIdeVersions}`);
     core.debug(`currentPlatformVersion:           ${currentPlatformVersion}`);
 
@@ -105,7 +111,7 @@ export async function updateGradleProperties(latestIdeVersion: semver.SemVer): P
     }
 
     const next_plugin_version: semver.SemVer = _next_plugin_version(
-      currentPluginVersion,
+      currentVersion,
       currentPlatformVersion,
       latestIdeVersion
     );
@@ -125,8 +131,8 @@ export async function updateGradleProperties(latestIdeVersion: semver.SemVer): P
     // in the `gradle.properties` file.
     const result = data
       .replace(
-        new RegExp(`^pluginVersion = ${gradleProperties?.pluginVersion?.toString()}$`, 'gm'),
-        `pluginVersion = ${next_plugin_version}`
+        new RegExp(`^${gradlePropertyVersionName} = ${version}$`, 'gm'),
+        `${gradlePropertyVersionName} = ${next_plugin_version}`
       )
       .replace(
         // Just grab and replace only the first version (up to the first comma)

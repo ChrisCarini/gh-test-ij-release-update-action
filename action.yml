@@ -5,6 +5,10 @@ inputs:
   PAT_TOKEN_FOR_IJ_UPDATE_ACTION: # change this
     required: true
     description: 'PAT token; necessary to update workflow files.'
+  gradlePropertyVersionName:
+    required: true
+    description: 'The name of the property in `gradle.properties` of the plugin/library version. `pluginVersion` or `libraryVersion` are valid values.'
+    default: 'pluginVersion'
 runs:
-  using: 'node16'
+  using: 'node20'
   main: 'dist/index.js'
