@@ -51,7 +51,7 @@ async function run(): Promise<void> {
     }
 
     // update gradle.properties file
-    const currentPlatformVersion = await updateGradleProperties(latestVersion, gradlePropertyVersionName);
+    const currentPlatformVersion = await updateGradleProperties(releaseInfo, latestVersion, gradlePropertyVersionName);
     core.debug(`Current Platform Version: ${currentPlatformVersion}`);
 
     if (semver.eq(currentPlatformVersion, latestVersion)) {

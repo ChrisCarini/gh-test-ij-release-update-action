@@ -1,6 +1,6 @@
 {
   "name": "jetbrains-plugin-platform-version-update-action",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "private": true,
   "description": "GitHub Action to update JetBrains Plugins when a new JetBrains Platform Version is available.",
   "main": "lib/main.js",

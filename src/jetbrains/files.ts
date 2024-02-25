@@ -6,7 +6,7 @@ import * as properties from 'properties';
 import * as semver from 'semver';
 import { simpleGit } from 'simple-git';
 // eslint-disable-next-line node/no-missing-import
-import { formatVersion, parseSemver, ZERO_SEMVER } from './versions';
+import { formatVersion, JetBrainsProductReleaseInfo, parseSemver, ZERO_SEMVER } from './versions';
 
 async function git_add(file: string): Promise<void> {
   await simpleGit()
@@ -51,6 +51,7 @@ function _next_plugin_version(
 }
 
 export async function updateGradleProperties(
+  releaseInfo: JetBrainsProductReleaseInfo,
   latestIdeVersion: semver.SemVer,
   gradlePropertyVersionName: 'pluginVersion' | 'libraryVersion'
 ): Promise<semver.SemVer> {
@@ -71,6 +72,8 @@ export async function updateGradleProperties(
       libraryVersion?: string | number;
       pluginVerifierIdeVersions?: string | number;
       platformVersion?: string | number;
+      pluginSinceBuild?: string | number;
+      pluginUntilBuild?: string | number;
     }
 
     const gradleProperties: JBGradlePropertiesFile = properties.parse(readFileSync(gradle_file, 'utf-8'), {
@@ -104,6 +107,8 @@ export async function updateGradleProperties(
     core.debug(`currentVersion:                   ${currentVersion} ( (${gradlePropertyVersionName}) )`);
     core.debug(`currentPluginVerifierIdeVersions: ${currentPluginVerifierIdeVersions}`);
     core.debug(`currentPlatformVersion:           ${currentPlatformVersion}`);
+    core.debug(`currentPluginSinceBuild:          ${gradleProperties?.pluginSinceBuild}`);
+    core.debug(`currentPluginUntilBuild:          ${gradleProperties?.pluginUntilBuild}`);
 
     if (semver.eq(currentPlatformVersion, latestIdeVersion)) {
       // Skip further execution, as the platform version is already the same, and we will end the action
@@ -142,6 +147,14 @@ export async function updateGradleProperties(
       .replace(
         new RegExp(`^platformVersion = ${gradleProperties?.platformVersion?.toString()}$`, 'gm'),
         `platformVersion = ${nextPlatformVersion}`
+      )
+      .replace(
+        new RegExp(`^pluginSinceBuild = ${gradleProperties?.pluginSinceBuild?.toString()}$`, 'gm'),
+        `pluginSinceBuild = ${releaseInfo.build.split('.')[0].toString()}`
+      )
+      .replace(
+        new RegExp(`^pluginUntilBuild = ${gradleProperties?.pluginUntilBuild?.toString()}$`, 'gm'),
+        `pluginUntilBuild = ${releaseInfo.build.split('.')[0].toString()}.*`
       );
 
     core.debug('Updated file contents:');
