@@ -168,6 +168,7 @@ async function run(): Promise<void> {
       core.debug(`PUSHED BRANCH [${newBranchName}]!!!`);
     }
 
+    // Create a PR
     const prBody = `
 # Upgrading IntelliJ from ${formatVersion(currentPlatformVersion)} to ${latestVersion}
 
