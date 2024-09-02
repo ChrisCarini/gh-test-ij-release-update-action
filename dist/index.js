@@ -39,7 +39,9 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.updateGithubWorkflow = exports.updateChangelog = exports.updateGradleProperties = void 0;
+exports.updateGradleProperties = updateGradleProperties;
+exports.updateChangelog = updateChangelog;
+exports.updateGithubWorkflow = updateGithubWorkflow;
 const core = __importStar(__nccwpck_require__(2186));
 const glob = __importStar(__nccwpck_require__(8090));
 const fs = __importStar(__nccwpck_require__(7147));
@@ -163,7 +165,6 @@ function updateGradleProperties(releaseInfo, latestIdeVersion, gradlePropertyVer
         }
     });
 }
-exports.updateGradleProperties = updateGradleProperties;
 function updateChangelog(currentPlatformVersion, latestIdeVersion) {
     return __awaiter(this, void 0, void 0, function* () {
         try {
@@ -201,7 +202,6 @@ function updateChangelog(currentPlatformVersion, latestIdeVersion) {
         }
     });
 }
-exports.updateChangelog = updateChangelog;
 function _fileContains(file, search) {
     const fileData = fs.readFileSync(file, 'utf8');
     // core.debug(`[${file}] File contents:`)
@@ -243,7 +243,6 @@ function updateGithubWorkflow(currentPlatformVersion, latestIdeVersion) {
         }
     });
 }
-exports.updateGithubWorkflow = updateGithubWorkflow;
 
 
 /***/ }),
@@ -286,7 +285,10 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.getLatestIntellijReleaseInfo = exports.formatVersion = exports.parseSemver = exports.ZERO_SEMVER = void 0;
+exports.ZERO_SEMVER = void 0;
+exports.parseSemver = parseSemver;
+exports.formatVersion = formatVersion;
+exports.getLatestIntellijReleaseInfo = getLatestIntellijReleaseInfo;
 const core = __importStar(__nccwpck_require__(2186));
 const httpClient = __importStar(__nccwpck_require__(6255));
 const semver = __importStar(__nccwpck_require__(1383));
@@ -311,7 +313,6 @@ function parseSemver(input) {
     }
     return parsed;
 }
-exports.parseSemver = parseSemver;
 /**
  * Format version by removing any `.0` from the end of the version string.
  * @param version
@@ -320,7 +321,6 @@ function formatVersion(version) {
     const strVersion = version.toString();
     return strVersion.endsWith('.0') ? strVersion.slice(0, -2) : strVersion;
 }
-exports.formatVersion = formatVersion;
 function getLatestIntellijReleaseInfo() {
     return __awaiter(this, void 0, void 0, function* () {
         try {
@@ -342,7 +342,6 @@ function getLatestIntellijReleaseInfo() {
         }
     });
 }
-exports.getLatestIntellijReleaseInfo = getLatestIntellijReleaseInfo;
 
 
 /***/ }),
@@ -512,6 +511,7 @@ function run() {
                     .exec(() => core.debug(`After [git push -u origin ${newBranchName}"]...`));
                 core.debug(`PUSHED BRANCH [${newBranchName}]!!!`);
             }
+            // Create a PR
             const prBody = `
 # Upgrading IntelliJ from ${(0, versions_1.formatVersion)(currentPlatformVersion)} to ${latestVersion}
 
@@ -1846,7 +1846,7 @@ function hashFiles(patterns, currentWorkspace = '', options, verbose = false) {
             followSymbolicLinks = options.followSymbolicLinks;
         }
         const globber = yield create(patterns, { followSymbolicLinks });
-        return internal_hash_files_1.hashFiles(globber, currentWorkspace, verbose);
+        return (0, internal_hash_files_1.hashFiles)(globber, currentWorkspace, verbose);
     });
 }
 exports.hashFiles = hashFiles;
@@ -1861,7 +1861,11 @@ exports.hashFiles = hashFiles;
 
 var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
     if (k2 === undefined) k2 = k;
-    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
 }) : (function(o, m, k, k2) {
     if (k2 === undefined) k2 = k;
     o[k2] = m[k];
@@ -1874,7 +1878,7 @@ var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (
 var __importStar = (this && this.__importStar) || function (mod) {
     if (mod && mod.__esModule) return mod;
     var result = {};
-    if (mod != null) for (var k in mod) if (k !== "default" && Object.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
     __setModuleDefault(result, mod);
     return result;
 };
@@ -1889,7 +1893,8 @@ function getOptions(copy) {
         followSymbolicLinks: true,
         implicitDescendants: true,
         matchDirectories: true,
-        omitBrokenSymbolicLinks: true
+        omitBrokenSymbolicLinks: true,
+        excludeHiddenFiles: false
     };
     if (copy) {
         if (typeof copy.followSymbolicLinks === 'boolean') {
@@ -1908,6 +1913,10 @@ function getOptions(copy) {
             result.omitBrokenSymbolicLinks = copy.omitBrokenSymbolicLinks;
             core.debug(`omitBrokenSymbolicLinks '${result.omitBrokenSymbolicLinks}'`);
         }
+        if (typeof copy.excludeHiddenFiles === 'boolean') {
+            result.excludeHiddenFiles = copy.excludeHiddenFiles;
+            core.debug(`excludeHiddenFiles '${result.excludeHiddenFiles}'`);
+        }
     }
     return result;
 }
@@ -1923,7 +1932,11 @@ exports.getOptions = getOptions;
 
 var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
     if (k2 === undefined) k2 = k;
-    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
 }) : (function(o, m, k, k2) {
     if (k2 === undefined) k2 = k;
     o[k2] = m[k];
@@ -1936,7 +1949,7 @@ var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (
 var __importStar = (this && this.__importStar) || function (mod) {
     if (mod && mod.__esModule) return mod;
     var result = {};
-    if (mod != null) for (var k in mod) if (k !== "default" && Object.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
     __setModuleDefault(result, mod);
     return result;
 };
@@ -1990,19 +2003,21 @@ class DefaultGlobber {
         return this.searchPaths.slice();
     }
     glob() {
-        var e_1, _a;
+        var _a, e_1, _b, _c;
         return __awaiter(this, void 0, void 0, function* () {
             const result = [];
             try {
-                for (var _b = __asyncValues(this.globGenerator()), _c; _c = yield _b.next(), !_c.done;) {
-                    const itemPath = _c.value;
+                for (var _d = true, _e = __asyncValues(this.globGenerator()), _f; _f = yield _e.next(), _a = _f.done, !_a; _d = true) {
+                    _c = _f.value;
+                    _d = false;
+                    const itemPath = _c;
                     result.push(itemPath);
                 }
             }
             catch (e_1_1) { e_1 = { error: e_1_1 }; }
             finally {
                 try {
-                    if (_c && !_c.done && (_a = _b.return)) yield _a.call(_b);
+                    if (!_d && !_a && (_b = _e.return)) yield _b.call(_e);
                 }
                 finally { if (e_1) throw e_1.error; }
             }
@@ -2058,6 +2073,10 @@ class DefaultGlobber {
                 );
                 // Broken symlink, or symlink cycle detected, or no longer exists
                 if (!stats) {
+                    continue;
+                }
+                // Hidden file or directory?
+                if (options.excludeHiddenFiles && path.basename(item.path).match(/^\./)) {
                     continue;
                 }
                 // Directory
@@ -2165,7 +2184,11 @@ exports.DefaultGlobber = DefaultGlobber;
 
 var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
     if (k2 === undefined) k2 = k;
-    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
 }) : (function(o, m, k, k2) {
     if (k2 === undefined) k2 = k;
     o[k2] = m[k];
@@ -2178,7 +2201,7 @@ var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (
 var __importStar = (this && this.__importStar) || function (mod) {
     if (mod && mod.__esModule) return mod;
     var result = {};
-    if (mod != null) for (var k in mod) if (k !== "default" && Object.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
     __setModuleDefault(result, mod);
     return result;
 };
@@ -2207,19 +2230,21 @@ const stream = __importStar(__nccwpck_require__(2781));
 const util = __importStar(__nccwpck_require__(3837));
 const path = __importStar(__nccwpck_require__(1017));
 function hashFiles(globber, currentWorkspace, verbose = false) {
-    var e_1, _a;
-    var _b;
+    var _a, e_1, _b, _c;
+    var _d;
     return __awaiter(this, void 0, void 0, function* () {
         const writeDelegate = verbose ? core.info : core.debug;
         let hasMatch = false;
         const githubWorkspace = currentWorkspace
             ? currentWorkspace
-            : (_b = process.env['GITHUB_WORKSPACE']) !== null && _b !== void 0 ? _b : process.cwd();
+            : (_d = process.env['GITHUB_WORKSPACE']) !== null && _d !== void 0 ? _d : process.cwd();
         const result = crypto.createHash('sha256');
         let count = 0;
         try {
-            for (var _c = __asyncValues(globber.globGenerator()), _d; _d = yield _c.next(), !_d.done;) {
-                const file = _d.value;
+            for (var _e = true, _f = __asyncValues(globber.globGenerator()), _g; _g = yield _f.next(), _a = _g.done, !_a; _e = true) {
+                _c = _g.value;
+                _e = false;
+                const file = _c;
                 writeDelegate(file);
                 if (!file.startsWith(`${githubWorkspace}${path.sep}`)) {
                     writeDelegate(`Ignore '${file}' since it is not under GITHUB_WORKSPACE.`);
@@ -2242,7 +2267,7 @@ function hashFiles(globber, currentWorkspace, verbose = false) {
         catch (e_1_1) { e_1 = { error: e_1_1 }; }
         finally {
             try {
-                if (_d && !_d.done && (_a = _c.return)) yield _a.call(_c);
+                if (!_e && !_a && (_b = _f.return)) yield _b.call(_f);
             }
             finally { if (e_1) throw e_1.error; }
         }
@@ -2282,7 +2307,7 @@ var MatchKind;
     MatchKind[MatchKind["File"] = 2] = "File";
     /** Matched */
     MatchKind[MatchKind["All"] = 3] = "All";
-})(MatchKind = exports.MatchKind || (exports.MatchKind = {}));
+})(MatchKind || (exports.MatchKind = MatchKind = {}));
 //# sourceMappingURL=internal-match-kind.js.map
 
 /***/ }),
@@ -2294,7 +2319,11 @@ var MatchKind;
 
 var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
     if (k2 === undefined) k2 = k;
-    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
 }) : (function(o, m, k, k2) {
     if (k2 === undefined) k2 = k;
     o[k2] = m[k];
@@ -2307,7 +2336,7 @@ var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (
 var __importStar = (this && this.__importStar) || function (mod) {
     if (mod && mod.__esModule) return mod;
     var result = {};
-    if (mod != null) for (var k in mod) if (k !== "default" && Object.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
     __setModuleDefault(result, mod);
     return result;
 };
@@ -2357,8 +2386,8 @@ exports.dirname = dirname;
  * or `C:` are expanded based on the current working directory.
  */
 function ensureAbsoluteRoot(root, itemPath) {
-    assert_1.default(root, `ensureAbsoluteRoot parameter 'root' must not be empty`);
-    assert_1.default(itemPath, `ensureAbsoluteRoot parameter 'itemPath' must not be empty`);
+    (0, assert_1.default)(root, `ensureAbsoluteRoot parameter 'root' must not be empty`);
+    (0, assert_1.default)(itemPath, `ensureAbsoluteRoot parameter 'itemPath' must not be empty`);
     // Already rooted
     if (hasAbsoluteRoot(itemPath)) {
         return itemPath;
@@ -2368,7 +2397,7 @@ function ensureAbsoluteRoot(root, itemPath) {
         // Check for itemPath like C: or C:foo
         if (itemPath.match(/^[A-Z]:[^\\/]|^[A-Z]:$/i)) {
             let cwd = process.cwd();
-            assert_1.default(cwd.match(/^[A-Z]:\\/i), `Expected current directory to start with an absolute drive root. Actual '${cwd}'`);
+            (0, assert_1.default)(cwd.match(/^[A-Z]:\\/i), `Expected current directory to start with an absolute drive root. Actual '${cwd}'`);
             // Drive letter matches cwd? Expand to cwd
             if (itemPath[0].toUpperCase() === cwd[0].toUpperCase()) {
                 // Drive only, e.g. C:
@@ -2393,11 +2422,11 @@ function ensureAbsoluteRoot(root, itemPath) {
         // Check for itemPath like \ or \foo
         else if (normalizeSeparators(itemPath).match(/^\\$|^\\[^\\]/)) {
             const cwd = process.cwd();
-            assert_1.default(cwd.match(/^[A-Z]:\\/i), `Expected current directory to start with an absolute drive root. Actual '${cwd}'`);
+            (0, assert_1.default)(cwd.match(/^[A-Z]:\\/i), `Expected current directory to start with an absolute drive root. Actual '${cwd}'`);
             return `${cwd[0]}:\\${itemPath.substr(1)}`;
         }
     }
-    assert_1.default(hasAbsoluteRoot(root), `ensureAbsoluteRoot parameter 'root' must have an absolute root`);
+    (0, assert_1.default)(hasAbsoluteRoot(root), `ensureAbsoluteRoot parameter 'root' must have an absolute root`);
     // Otherwise ensure root ends with a separator
     if (root.endsWith('/') || (IS_WINDOWS && root.endsWith('\\'))) {
         // Intentionally empty
@@ -2414,7 +2443,7 @@ exports.ensureAbsoluteRoot = ensureAbsoluteRoot;
  * `\\hello\share` and `C:\hello` (and using alternate separator).
  */
 function hasAbsoluteRoot(itemPath) {
-    assert_1.default(itemPath, `hasAbsoluteRoot parameter 'itemPath' must not be empty`);
+    (0, assert_1.default)(itemPath, `hasAbsoluteRoot parameter 'itemPath' must not be empty`);
     // Normalize separators
     itemPath = normalizeSeparators(itemPath);
     // Windows
@@ -2431,7 +2460,7 @@ exports.hasAbsoluteRoot = hasAbsoluteRoot;
  * `\`, `\hello`, `\\hello\share`, `C:`, and `C:\hello` (and using alternate separator).
  */
 function hasRoot(itemPath) {
-    assert_1.default(itemPath, `isRooted parameter 'itemPath' must not be empty`);
+    (0, assert_1.default)(itemPath, `isRooted parameter 'itemPath' must not be empty`);
     // Normalize separators
     itemPath = normalizeSeparators(itemPath);
     // Windows
@@ -2499,7 +2528,11 @@ exports.safeTrimTrailingSeparator = safeTrimTrailingSeparator;
 
 var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
     if (k2 === undefined) k2 = k;
-    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
 }) : (function(o, m, k, k2) {
     if (k2 === undefined) k2 = k;
     o[k2] = m[k];
@@ -2512,7 +2545,7 @@ var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (
 var __importStar = (this && this.__importStar) || function (mod) {
     if (mod && mod.__esModule) return mod;
     var result = {};
-    if (mod != null) for (var k in mod) if (k !== "default" && Object.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
     __setModuleDefault(result, mod);
     return result;
 };
@@ -2537,7 +2570,7 @@ class Path {
         this.segments = [];
         // String
         if (typeof itemPath === 'string') {
-            assert_1.default(itemPath, `Parameter 'itemPath' must not be empty`);
+            (0, assert_1.default)(itemPath, `Parameter 'itemPath' must not be empty`);
             // Normalize slashes and trim unnecessary trailing slash
             itemPath = pathHelper.safeTrimTrailingSeparator(itemPath);
             // Not rooted
@@ -2564,24 +2597,24 @@ class Path {
         // Array
         else {
             // Must not be empty
-            assert_1.default(itemPath.length > 0, `Parameter 'itemPath' must not be an empty array`);
+            (0, assert_1.default)(itemPath.length > 0, `Parameter 'itemPath' must not be an empty array`);
             // Each segment
             for (let i = 0; i < itemPath.length; i++) {
                 let segment = itemPath[i];
                 // Must not be empty
-                assert_1.default(segment, `Parameter 'itemPath' must not contain any empty segments`);
+                (0, assert_1.default)(segment, `Parameter 'itemPath' must not contain any empty segments`);
                 // Normalize slashes
                 segment = pathHelper.normalizeSeparators(itemPath[i]);
                 // Root segment
                 if (i === 0 && pathHelper.hasRoot(segment)) {
                     segment = pathHelper.safeTrimTrailingSeparator(segment);
-                    assert_1.default(segment === pathHelper.dirname(segment), `Parameter 'itemPath' root segment contains information for multiple segments`);
+                    (0, assert_1.default)(segment === pathHelper.dirname(segment), `Parameter 'itemPath' root segment contains information for multiple segments`);
                     this.segments.push(segment);
                 }
                 // All other segments
                 else {
                     // Must not contain slash
-                    assert_1.default(!segment.includes(path.sep), `Parameter 'itemPath' contains unexpected path separators`);
+                    (0, assert_1.default)(!segment.includes(path.sep), `Parameter 'itemPath' contains unexpected path separators`);
                     this.segments.push(segment);
                 }
             }
@@ -2619,7 +2652,11 @@ exports.Path = Path;
 
 var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
     if (k2 === undefined) k2 = k;
-    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
 }) : (function(o, m, k, k2) {
     if (k2 === undefined) k2 = k;
     o[k2] = m[k];
@@ -2632,7 +2669,7 @@ var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (
 var __importStar = (this && this.__importStar) || function (mod) {
     if (mod && mod.__esModule) return mod;
     var result = {};
-    if (mod != null) for (var k in mod) if (k !== "default" && Object.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
     __setModuleDefault(result, mod);
     return result;
 };
@@ -2720,7 +2757,11 @@ exports.partialMatch = partialMatch;
 
 var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
     if (k2 === undefined) k2 = k;
-    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
 }) : (function(o, m, k, k2) {
     if (k2 === undefined) k2 = k;
     o[k2] = m[k];
@@ -2733,7 +2774,7 @@ var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (
 var __importStar = (this && this.__importStar) || function (mod) {
     if (mod && mod.__esModule) return mod;
     var result = {};
-    if (mod != null) for (var k in mod) if (k !== "default" && Object.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
     __setModuleDefault(result, mod);
     return result;
 };
@@ -2765,9 +2806,9 @@ class Pattern {
         else {
             // Convert to pattern
             segments = segments || [];
-            assert_1.default(segments.length, `Parameter 'segments' must not empty`);
+            (0, assert_1.default)(segments.length, `Parameter 'segments' must not empty`);
             const root = Pattern.getLiteral(segments[0]);
-            assert_1.default(root && pathHelper.hasAbsoluteRoot(root), `Parameter 'segments' first element must be a root path`);
+            (0, assert_1.default)(root && pathHelper.hasAbsoluteRoot(root), `Parameter 'segments' first element must be a root path`);
             pattern = new internal_path_1.Path(segments).toString().trim();
             if (patternOrNegate) {
                 pattern = `!${pattern}`;
@@ -2861,13 +2902,13 @@ class Pattern {
      */
     static fixupPattern(pattern, homedir) {
         // Empty
-        assert_1.default(pattern, 'pattern cannot be empty');
+        (0, assert_1.default)(pattern, 'pattern cannot be empty');
         // Must not contain `.` segment, unless first segment
         // Must not contain `..` segment
         const literalSegments = new internal_path_1.Path(pattern).segments.map(x => Pattern.getLiteral(x));
-        assert_1.default(literalSegments.every((x, i) => (x !== '.' || i === 0) && x !== '..'), `Invalid pattern '${pattern}'. Relative pathing '.' and '..' is not allowed.`);
+        (0, assert_1.default)(literalSegments.every((x, i) => (x !== '.' || i === 0) && x !== '..'), `Invalid pattern '${pattern}'. Relative pathing '.' and '..' is not allowed.`);
         // Must not contain globs in root, e.g. Windows UNC path \\foo\b*r
-        assert_1.default(!pathHelper.hasRoot(pattern) || literalSegments[0], `Invalid pattern '${pattern}'. Root segment must not contain globs.`);
+        (0, assert_1.default)(!pathHelper.hasRoot(pattern) || literalSegments[0], `Invalid pattern '${pattern}'. Root segment must not contain globs.`);
         // Normalize slashes
         pattern = pathHelper.normalizeSeparators(pattern);
         // Replace leading `.` segment
@@ -2877,8 +2918,8 @@ class Pattern {
         // Replace leading `~` segment
         else if (pattern === '~' || pattern.startsWith(`~${path.sep}`)) {
             homedir = homedir || os.homedir();
-            assert_1.default(homedir, 'Unable to determine HOME directory');
-            assert_1.default(pathHelper.hasAbsoluteRoot(homedir), `Expected HOME directory to be a rooted path. Actual '${homedir}'`);
+            (0, assert_1.default)(homedir, 'Unable to determine HOME directory');
+            (0, assert_1.default)(pathHelper.hasAbsoluteRoot(homedir), `Expected HOME directory to be a rooted path. Actual '${homedir}'`);
             pattern = Pattern.globEscape(homedir) + pattern.substr(1);
         }
         // Replace relative drive root, e.g. pattern is C: or C:foo
@@ -3648,7 +3689,7 @@ class HttpClient {
         }
         const usingSsl = parsedUrl.protocol === 'https:';
         proxyAgent = new undici_1.ProxyAgent(Object.assign({ uri: proxyUrl.href, pipelining: !this._keepAlive ? 0 : 1 }, ((proxyUrl.username || proxyUrl.password) && {
-            token: `${proxyUrl.username}:${proxyUrl.password}`
+            token: `Basic ${Buffer.from(`${proxyUrl.username}:${proxyUrl.password}`).toString('base64')}`
         })));
         this._proxyAgentDispatcher = proxyAgent;
         if (usingSsl && this._ignoreSslError) {
@@ -3762,11 +3803,11 @@ function getProxyUrl(reqUrl) {
     })();
     if (proxyVar) {
         try {
-            return new URL(proxyVar);
+            return new DecodedURL(proxyVar);
         }
         catch (_a) {
             if (!proxyVar.startsWith('http://') && !proxyVar.startsWith('https://'))
-                return new URL(`http://${proxyVar}`);
+                return new DecodedURL(`http://${proxyVar}`);
         }
     }
     else {
@@ -3824,6 +3865,19 @@ function isLoopbackAddress(host) {
         hostLower.startsWith('127.') ||
         hostLower.startsWith('[::1]') ||
         hostLower.startsWith('[0:0:0:0:0:0:0:1]'));
+}
+class DecodedURL extends URL {
+    constructor(url, base) {
+        super(url, base);
+        this._decodedUsername = decodeURIComponent(super.username);
+        this._decodedPassword = decodeURIComponent(super.password);
+    }
+    get username() {
+        return this._decodedUsername;
+    }
+    get password() {
+        return this._decodedPassword;
+    }
 }
 //# sourceMappingURL=proxy.js.map
 
@@ -10124,11 +10178,11 @@ function getDate() {
 }
 
 /**
- * Invokes `util.format()` with the specified arguments and writes to stderr.
+ * Invokes `util.formatWithOptions()` with the specified arguments and writes to stderr.
  */
 
 function log(...args) {
-	return process.stderr.write(util.format(...args) + '\n');
+	return process.stderr.write(util.formatWithOptions(exports.inspectOpts, ...args) + '\n');
 }
 
 /**
@@ -12772,6 +12826,8 @@ const Range = __nccwpck_require__(9828)
 /***/ 9828:
 /***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
 
+const SPACE_CHARACTERS = /\s+/g
+
 // hoisted class for cyclic dependency
 class Range {
   constructor (range, options) {
@@ -12792,7 +12848,7 @@ class Range {
       // just put it in the set and return
       this.raw = range.value
       this.set = [[range]]
-      this.format()
+      this.formatted = undefined
       return this
     }
 
@@ -12803,10 +12859,7 @@ class Range {
     // First reduce all whitespace as much as possible so we do not have to rely
     // on potentially slow regexes like \s*. This is then stored and used for
     // future error messages as well.
-    this.raw = range
-      .trim()
-      .split(/\s+/)
-      .join(' ')
+    this.raw = range.trim().replace(SPACE_CHARACTERS, ' ')
 
     // First, split on ||
     this.set = this.raw
@@ -12840,14 +12893,29 @@ class Range {
       }
     }
 
-    this.format()
+    this.formatted = undefined
+  }
+
+  get range () {
+    if (this.formatted === undefined) {
+      this.formatted = ''
+      for (let i = 0; i < this.set.length; i++) {
+        if (i > 0) {
+          this.formatted += '||'
+        }
+        const comps = this.set[i]
+        for (let k = 0; k < comps.length; k++) {
+          if (k > 0) {
+            this.formatted += ' '
+          }
+          this.formatted += comps[k].toString().trim()
+        }
+      }
+    }
+    return this.formatted
   }
 
   format () {
-    this.range = this.set
-      .map((comps) => comps.join(' ').trim())
-      .join('||')
-      .trim()
     return this.range
   }
 
@@ -15394,6 +15462,11 @@ function remove(target, item) {
 function asArray(source) {
   return Array.isArray(source) ? source : [source];
 }
+function asCamelCase(str) {
+  return str.replace(/[\s-]+(.)/g, (_all, chr) => {
+    return chr.toUpperCase();
+  });
+}
 function asStringArray(source) {
   return asArray(source).map(String);
 }
@@ -15646,8 +15719,8 @@ var init_task_options = __esm({
 });
 
 // src/lib/utils/task-parser.ts
-function callTaskParser(parser3, streams) {
-  return parser3(streams.stdOut, streams.stdErr);
+function callTaskParser(parser4, streams) {
+  return parser4(streams.stdOut, streams.stdErr);
 }
 function parseStringResponse(result, parsers12, texts, trim = true) {
   asArray(texts).forEach((text) => {
@@ -15682,6 +15755,7 @@ __export(utils_exports, {
   append: () => append,
   appendTaskOptions: () => appendTaskOptions,
   asArray: () => asArray,
+  asCamelCase: () => asCamelCase,
   asFunction: () => asFunction,
   asNumber: () => asNumber,
   asStringArray: () => asStringArray,
@@ -15840,11 +15914,11 @@ __export(task_exports, {
   straightThroughBufferTask: () => straightThroughBufferTask,
   straightThroughStringTask: () => straightThroughStringTask
 });
-function adhocExecTask(parser3) {
+function adhocExecTask(parser4) {
   return {
     commands: EMPTY_COMMANDS,
     format: "empty",
-    parser: parser3
+    parser: parser4
   };
 }
 function configurationErrorTask(error) {
@@ -17323,6 +17397,49 @@ var init_checkout = __esm({
   }
 });
 
+// src/lib/tasks/count-objects.ts
+function countObjectsResponse() {
+  return {
+    count: 0,
+    garbage: 0,
+    inPack: 0,
+    packs: 0,
+    prunePackable: 0,
+    size: 0,
+    sizeGarbage: 0,
+    sizePack: 0
+  };
+}
+function count_objects_default() {
+  return {
+    countObjects() {
+      return this._runTask({
+        commands: ["count-objects", "--verbose"],
+        format: "utf-8",
+        parser(stdOut) {
+          return parseStringResponse(countObjectsResponse(), [parser2], stdOut);
+        }
+      });
+    }
+  };
+}
+var parser2;
+var init_count_objects = __esm({
+  "src/lib/tasks/count-objects.ts"() {
+    "use strict";
+    init_utils();
+    parser2 = new LineParser(
+      /([a-z-]+): (\d+)$/,
+      (result, [key, value]) => {
+        const property = asCamelCase(key);
+        if (result.hasOwnProperty(property)) {
+          result[property] = asNumber(value);
+        }
+      }
+    );
+  }
+});
+
 // src/lib/parsers/parse-commit.ts
 function parseCommitResult(stdOut) {
   const result = {
@@ -17564,8 +17681,8 @@ var init_DiffSummary = __esm({
 
 // src/lib/parsers/parse-diff-summary.ts
 function getDiffParser(format = "" /* NONE */) {
-  const parser3 = diffSummaryParsers[format];
-  return (stdOut) => parseStringResponse(new DiffSummary(), parser3, stdOut, false);
+  const parser4 = diffSummaryParsers[format];
+  return (stdOut) => parseStringResponse(new DiffSummary(), parser4, stdOut, false);
 }
 var statParser, numStatParser, nameOnlyParser, nameStatusParser, diffSummaryParsers;
 var init_parse_diff_summary = __esm({
@@ -17821,11 +17938,11 @@ function parseLogOptions(opt = {}, customArgs = []) {
   };
 }
 function logTask(splitter, fields, customArgs) {
-  const parser3 = createListLogSummaryParser(splitter, fields, logFormatFromCommand(customArgs));
+  const parser4 = createListLogSummaryParser(splitter, fields, logFormatFromCommand(customArgs));
   return {
     commands: ["log", ...customArgs],
     format: "utf-8",
-    parser: parser3
+    parser: parser4
   };
 }
 function log_default() {
@@ -18344,11 +18461,11 @@ function renamedFile(line) {
     to
   };
 }
-function parser2(indexX, indexY, handler) {
+function parser3(indexX, indexY, handler) {
   return [`${indexX}${indexY}`, handler];
 }
 function conflicts(indexX, ...indexY) {
-  return indexY.map((y) => parser2(indexX, y, (result, file) => append(result.conflicted, file)));
+  return indexY.map((y) => parser3(indexX, y, (result, file) => append(result.conflicted, file)));
 }
 function splitLine(result, lineStr) {
   const trimmed2 = lineStr.trim();
@@ -18399,58 +18516,58 @@ var init_StatusSummary = __esm({
       }
     };
     parsers6 = new Map([
-      parser2(
+      parser3(
         " " /* NONE */,
         "A" /* ADDED */,
         (result, file) => append(result.created, file)
       ),
-      parser2(
+      parser3(
         " " /* NONE */,
         "D" /* DELETED */,
         (result, file) => append(result.deleted, file)
       ),
-      parser2(
+      parser3(
         " " /* NONE */,
         "M" /* MODIFIED */,
         (result, file) => append(result.modified, file)
       ),
-      parser2(
+      parser3(
         "A" /* ADDED */,
         " " /* NONE */,
         (result, file) => append(result.created, file) && append(result.staged, file)
       ),
-      parser2(
+      parser3(
         "A" /* ADDED */,
         "M" /* MODIFIED */,
         (result, file) => append(result.created, file) && append(result.staged, file) && append(result.modified, file)
       ),
-      parser2(
+      parser3(
         "D" /* DELETED */,
         " " /* NONE */,
         (result, file) => append(result.deleted, file) && append(result.staged, file)
       ),
-      parser2(
+      parser3(
         "M" /* MODIFIED */,
         " " /* NONE */,
         (result, file) => append(result.modified, file) && append(result.staged, file)
       ),
-      parser2(
+      parser3(
         "M" /* MODIFIED */,
         "M" /* MODIFIED */,
         (result, file) => append(result.modified, file) && append(result.staged, file)
       ),
-      parser2("R" /* RENAMED */, " " /* NONE */, (result, file) => {
+      parser3("R" /* RENAMED */, " " /* NONE */, (result, file) => {
         append(result.renamed, renamedFile(file));
       }),
-      parser2("R" /* RENAMED */, "M" /* MODIFIED */, (result, file) => {
+      parser3("R" /* RENAMED */, "M" /* MODIFIED */, (result, file) => {
         const renamed = renamedFile(file);
         append(result.renamed, renamed);
         append(result.modified, renamed.to);
       }),
-      parser2("!" /* IGNORED */, "!" /* IGNORED */, (_result, _file) => {
+      parser3("!" /* IGNORED */, "!" /* IGNORED */, (_result, _file) => {
         append(_result.ignored = _result.ignored || [], _file);
       }),
-      parser2(
+      parser3(
         "?" /* UNTRACKED */,
         "?" /* UNTRACKED */,
         (result, file) => append(result.not_added, file)
@@ -18619,6 +18736,7 @@ var init_simple_git_api = __esm({
     init_task_callback();
     init_change_working_directory();
     init_checkout();
+    init_count_objects();
     init_commit();
     init_config();
     init_first_commit();
@@ -18737,6 +18855,7 @@ var init_simple_git_api = __esm({
       checkout_default(),
       commit_default(),
       config_default(),
+      count_objects_default(),
       first_commit_default(),
       grep_default(),
       log_default(),
@@ -18978,11 +19097,11 @@ function branchTask(customArgs) {
   };
 }
 function branchLocalTask() {
-  const parser3 = parseBranchSummary;
+  const parser4 = parseBranchSummary;
   return {
     format: "utf-8",
     commands: ["branch", "-v"],
-    parser: parser3
+    parser: parser4
   };
 }
 function deleteBranchesTask(branches, forceDelete = false) {
@@ -19335,7 +19454,7 @@ __export(stash_list_exports, {
 function stashListTask(opt = {}, customArgs) {
   const options = parseLogOptions(opt);
   const commands = ["stash", "list", ...options.commands, ...customArgs];
-  const parser3 = createListLogSummaryParser(
+  const parser4 = createListLogSummaryParser(
     options.splitter,
     options.fields,
     logFormatFromCommand(commands)
@@ -19343,7 +19462,7 @@ function stashListTask(opt = {}, customArgs) {
   return validateLogFormatConfig(commands) || {
     commands,
     format: "utf-8",
-    parser: parser3
+    parser: parser4
   };
 }
 var init_stash_list = __esm({
