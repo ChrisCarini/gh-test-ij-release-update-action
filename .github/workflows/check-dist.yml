@@ -31,7 +31,7 @@ jobs:
           token: ${{ secrets.GH_PAT_REPO_WORKFLOW_SCOPE }}
 
       - name: Set Node.js 16.x
-        uses: actions/setup-node@v4.0.3
+        uses: actions/setup-node@v4.0.4
         with:
           node-version: 16.x
 
