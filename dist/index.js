@@ -559,8 +559,7 @@ ${releaseInfo.whatsnew}
 }
 core.debug('Starting...');
 run()
-    .then(() => {
-})
+    .then(() => { })
     .catch((err) => {
     core.setFailed(err.message);
     core.debug(err);
