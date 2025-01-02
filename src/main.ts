@@ -33,28 +33,26 @@ async function checkFileChangeCount(): Promise<number> {
 }
 
 async function run(): Promise<void> {
-  try {
     // get the latest intellij release
     const releaseInfo: JetBrainsProductReleaseInfo = await getLatestIntellijReleaseInfo();
     core.debug(`Latest IntelliJ Release Info:`);
     core.debug(JSON.stringify(releaseInfo));
-    const latestVersion: semver.SemVer = parseSemver(releaseInfo.version);
+    const latestVersion: string = releaseInfo.version;
     core.debug(`Latest IntelliJ Version: ${latestVersion}`);
 
     const gradlePropertyVersionName = core.getInput('gradlePropertyVersionName');
     core.debug(`gradlePropertyVersionName: ${gradlePropertyVersionName}`);
     if (gradlePropertyVersionName !== 'pluginVersion' && gradlePropertyVersionName !== 'libraryVersion') {
-      core.setFailed(
+      throw new Error(
         `Invalid gradlePropertyVersionName: [${gradlePropertyVersionName}] Pick either 'pluginVersion' or 'libraryVersion'.`
       );
-      return;
     }
 
     // update gradle.properties file
-    const currentPlatformVersion = await updateGradleProperties(releaseInfo, latestVersion, gradlePropertyVersionName);
+    const currentPlatformVersion: string = await updateGradleProperties(releaseInfo, latestVersion, gradlePropertyVersionName);
     core.debug(`Current Platform Version: ${currentPlatformVersion}`);
 
-    if (semver.eq(currentPlatformVersion, latestVersion)) {
+    if (currentPlatformVersion === latestVersion) {
       core.info(
         `Skipping update, current and next platform versions are the same (${currentPlatformVersion} == ${latestVersion}).`
       );
@@ -64,7 +62,7 @@ async function run(): Promise<void> {
     // update CHANGELOG.md
     await updateChangelog(currentPlatformVersion, latestVersion);
 
-    // update github workflows
+    // update GitHub workflows
     await updateGithubWorkflow(currentPlatformVersion, latestVersion);
 
     core.debug('BEFORE: check file change count');
@@ -137,6 +135,7 @@ async function run(): Promise<void> {
       return;
     }
 
+    const upgradeTitle = `Upgrading IntelliJ from ${formatVersion(currentPlatformVersion)} to ${latestVersion}`;
     if (!currentRemoteBranchNames.includes(newBranchName)) {
       core.debug(`${newBranchName} - BRANCH DOES NOT EXIST; CREATE & PUSH`);
       await simpleGit()
@@ -146,21 +145,9 @@ async function run(): Promise<void> {
         .addConfig('http.sslVerify', 'false')
         .addConfig('user.name', 'ChrisCarini')
         .addConfig('user.email', '6374067+chriscarini@users.noreply.github.com')
-        .exec(() =>
-          core.debug(
-            `Starting [git commit -m "Upgrading IntelliJ from ${formatVersion(
-              currentPlatformVersion
-            )} to ${latestVersion}"]...`
-          )
-        )
-        .commit(`Upgrading IntelliJ from ${formatVersion(currentPlatformVersion)} to ${latestVersion}`)
-        .exec(() =>
-          core.debug(
-            `Finished [git commit -m "Upgrading IntelliJ from ${formatVersion(
-              currentPlatformVersion
-            )} to ${latestVersion}"]...`
-          )
-        )
+        .exec(() => core.debug(`Starting [git commit -m "${upgradeTitle}"]...`))
+        .commit(upgradeTitle)
+        .exec(() => core.debug(`Finished [git commit -m "${upgradeTitle}"]...`))
         .exec(() => core.debug(`Before [git push -u origin ${newBranchName}"]..`))
         .push(['-u', 'origin', newBranchName])
         .exec(() => core.debug(`After [git push -u origin ${newBranchName}"]...`));
@@ -168,35 +155,30 @@ async function run(): Promise<void> {
       core.debug(`PUSHED BRANCH [${newBranchName}]!!!`);
     }
 
-    // Create a PR
-    const prBody = `
-# Upgrading IntelliJ from ${formatVersion(currentPlatformVersion)} to ${latestVersion}
+    // Create a PR if one does not already exist
+    if (!currentPullRequestBranchNames.includes(newBranchName)) {
+      const prBody = `
+# ${upgradeTitle}
 
 You can find the change log here: ${releaseInfo.notesLink}
 
 # What's New?
 ${releaseInfo.whatsnew}
     `;
-
-    if (!currentPullRequestBranchNames.includes(newBranchName)) {
       const baseBranch = github.context.ref;
       core.debug(`${newBranchName} - PR DOES NOT EXIST; CREATE (against base branch ${baseBranch})`);
-      const foo = await octokit.rest.pulls.create({
+      const response = await octokit.rest.pulls.create({
         owner: github.context.repo.owner,
         repo: github.context.repo.repo,
-        title: `Upgrading IntelliJ from ${formatVersion(currentPlatformVersion)} to ${latestVersion}`,
+        title: upgradeTitle,
         body: prBody,
         head: newBranchName,
         base: baseBranch,
       });
-      core.debug(JSON.stringify(foo));
+      core.debug(JSON.stringify(response));
       core.debug(`OPENED PR FOR BRANCH [${newBranchName}]!!!`);
-      core.info(`PR Opened: ${foo.data.html_url}`);
+      core.info(`PR Opened: ${response.data.html_url}`);
     }
-  } catch (error) {
-    if (error instanceof Error) core.setFailed(error.message);
-    throw error;
-  }
 }
 
 core.debug('Starting...');

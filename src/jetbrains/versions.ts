@@ -2,7 +2,8 @@ import * as core from '@actions/core';
 import * as httpClient from '@actions/http-client';
 import * as semver from 'semver';
 
-export const ZERO_SEMVER = new semver.SemVer('0.0.0');
+export const ZERO_SEMVER_STR = '0.0.0';
+export const ZERO_SEMVER = new semver.SemVer(ZERO_SEMVER_STR);
 
 export function parseSemver(input: string | undefined): semver.SemVer {
   if (input === undefined) {
@@ -31,9 +32,8 @@ export function parseSemver(input: string | undefined): semver.SemVer {
  * Format version by removing any `.0` from the end of the version string.
  * @param version
  */
-export function formatVersion(version: semver.SemVer): string {
-  const strVersion = version.toString();
-  return strVersion.endsWith('.0') ? strVersion.slice(0, -2) : strVersion;
+export function formatVersion(version: string): string {
+  return version.endsWith('.0') ? version.slice(0, -2) : version;
 }
 
 export interface JetBrainsProductReleaseInfo {

@@ -6,7 +6,7 @@ import * as properties from 'properties';
 import * as semver from 'semver';
 import { simpleGit } from 'simple-git';
 // eslint-disable-next-line node/no-missing-import
-import { formatVersion, JetBrainsProductReleaseInfo, parseSemver, ZERO_SEMVER } from './versions';
+import { formatVersion, JetBrainsProductReleaseInfo, parseSemver, ZERO_SEMVER, ZERO_SEMVER_STR } from './versions';
 
 async function git_add(file: string): Promise<void> {
   await simpleGit()
@@ -15,35 +15,43 @@ async function git_add(file: string): Promise<void> {
     .exec(() => core.debug(`Finished 'git add ${file}'...`));
 }
 
-function _inc_version(version: semver.SemVer, release: semver.ReleaseType): semver.SemVer {
+export const _inc_version = (version: semver.SemVer, release: semver.ReleaseType): semver.SemVer => {
   const incrementedVersion: string | null = semver.inc(version, release);
   if (version === null || incrementedVersion === null) {
-    core.setFailed(`Failed to increment ${release} version of ${version}`);
-    return ZERO_SEMVER;
+    throw new Error(`Failed to increment ${release} version of ${version}`);
   }
   return new semver.SemVer(incrementedVersion);
 }
 
-function _next_plugin_version(
+export function _next_plugin_version(
   plugin_version: semver.SemVer,
-  current_platform_version: semver.SemVer,
-  new_platform_version: semver.SemVer
+  current_platform_version: string,
+  new_platform_version: string
 ): semver.SemVer {
+    const [current_major, current_minor, current_patch, current_build = 0] = current_platform_version.split('.').map(Number);
+    const [new_major, new_minor, new_patch, new_build = 0] = new_platform_version.split('.').map(Number);
+
   // # Platform: 2022.3.2 -> 2023.1.0
   // # Plugin  :    0.2.6 ->    1.0.0
-  if (new_platform_version.major > current_platform_version.major) {
+  if (new_major > current_major) {
     return _inc_version(plugin_version, 'major');
   }
 
   // # Platform: 2022.1.1 -> 2023.2.0
   // # Plugin  :    0.2.6 ->    0.3.0
-  if (new_platform_version.minor > current_platform_version.minor) {
+  if (new_minor > current_minor) {
     return _inc_version(plugin_version, 'minor');
   }
 
-  // # Platform: 2022.3.2 -> 2023.3.3
+  // # Platform: 2022.3.2 -> 2022.3.3
   // # Plugin  :    0.2.6 ->    0.2.7
-  if (new_platform_version.patch > current_platform_version.patch) {
+  if (new_patch > current_patch) {
+    return _inc_version(plugin_version, 'patch');
+  }
+
+  // # Platform: 2024.3.1 -> 2024.3.1.1
+  // # Plugin  :    0.2.6 ->    0.2.7
+  if (new_build > current_build) {
     return _inc_version(plugin_version, 'patch');
   }
 
@@ -52,12 +60,11 @@ function _next_plugin_version(
 
 export async function updateGradleProperties(
   releaseInfo: JetBrainsProductReleaseInfo,
-  latestIdeVersion: semver.SemVer,
+  latestIdeVersion: string,
   gradlePropertyVersionName: 'pluginVersion' | 'libraryVersion'
-): Promise<semver.SemVer> {
-  try {
+): Promise<string> {
     core.debug('Updating  [gradle.properties] file...');
-    core.debug(latestIdeVersion.version);
+    core.debug(latestIdeVersion);
 
     const globber = await glob.create('./gradle.properties');
     const files = await globber.glob();
@@ -103,16 +110,19 @@ export async function updateGradleProperties(
         return false;
       });
 
-    const currentPlatformVersion = parseSemver(gradleProperties?.platformVersion?.toString());
+    const currentPlatformVersion = gradleProperties?.platformVersion?.toString();
     core.debug(`currentVersion:                   ${currentVersion} ( (${gradlePropertyVersionName}) )`);
     core.debug(`currentPluginVerifierIdeVersions: ${currentPluginVerifierIdeVersions}`);
     core.debug(`currentPlatformVersion:           ${currentPlatformVersion}`);
     core.debug(`currentPluginSinceBuild:          ${gradleProperties?.pluginSinceBuild}`);
     core.debug(`currentPluginUntilBuild:          ${gradleProperties?.pluginUntilBuild}`);
 
-    if (semver.eq(currentPlatformVersion, latestIdeVersion)) {
+    if (currentPlatformVersion === latestIdeVersion) {
       // Skip further execution, as the platform version is already the same, and we will end the action
       return currentPlatformVersion;
+    }
+    if (currentPlatformVersion === undefined) {
+      throw new Error('No platformVersion found in the gradle.properties file. Exiting.');
     }
 
     const next_plugin_version: semver.SemVer = _next_plugin_version(
@@ -169,22 +179,15 @@ export async function updateGradleProperties(
 
     core.debug('Completed [gradle.properties] file.');
 
-    return currentPlatformVersion ? currentPlatformVersion : new semver.SemVer('0.0.0');
-  } catch (error) {
-    if (error instanceof Error) {
-      core.setFailed(error.message);
-    }
-    return new semver.SemVer('0.0.0');
-  }
+    return currentPlatformVersion ? currentPlatformVersion : ZERO_SEMVER_STR;
 }
 
 export async function updateChangelog(
-  currentPlatformVersion: semver.SemVer,
-  latestIdeVersion: semver.SemVer
+  currentPlatformVersion: string,
+  latestIdeVersion: string
 ): Promise<void> {
-  try {
     core.debug('Updating  [CHANGELOG.md] file...');
-    core.debug(latestIdeVersion.version);
+    core.debug(latestIdeVersion);
 
     const upgradeLine = `- Upgrading IntelliJ from ${formatVersion(currentPlatformVersion)} to ${latestIdeVersion}`;
 
@@ -192,7 +195,7 @@ export async function updateChangelog(
     const files = await globber.glob();
     core.debug(`Found ${files.length} files`);
     if (files.length !== 1) {
-      core.setFailed('Too many .properties files found. Exiting.');
+      throw new Error('Too many ./CHANGELOG.md files found. Exiting.');
     }
     const changelogFile = files[0];
 
@@ -221,11 +224,6 @@ export async function updateChangelog(
     await git_add(changelogFile);
 
     core.debug('Completed [CHANGELOG.md] file.');
-  } catch (error) {
-    if (error instanceof Error) {
-      core.setFailed(error.message);
-    }
-  }
 }
 
 function _fileContains(file: string, search: string): boolean {
@@ -238,13 +236,12 @@ function _fileContains(file: string, search: string): boolean {
 }
 
 export async function updateGithubWorkflow(
-  currentPlatformVersion: semver.SemVer,
-  latestIdeVersion: semver.SemVer
+  currentPlatformVersion: string,
+  latestIdeVersion: string
 ): Promise<void> {
-  try {
     core.debug('Updating GitHub workflow files...');
-    core.debug(`currentPlatformVersion: ${currentPlatformVersion.version}`);
-    core.debug(`latestIdeVersion:       ${latestIdeVersion.version}`);
+    core.debug(`currentPlatformVersion: ${currentPlatformVersion}`);
+    core.debug(`latestIdeVersion:       ${latestIdeVersion}`);
 
     const globber = await glob.create('./.github/workflows/*');
     const files = await globber.glob();
@@ -278,9 +275,4 @@ export async function updateGithubWorkflow(
     }
 
     core.debug(`Completed updating ${filesToUpdate.length} GitHub workflow files.`);
-  } catch (error) {
-    if (error instanceof Error) {
-      core.setFailed(error.message);
-    }
-  }
 }
