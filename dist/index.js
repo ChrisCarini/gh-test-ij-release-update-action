@@ -80,7 +80,9 @@ const _inc_version = (version, release) => {
 };
 exports._inc_version = _inc_version;
 function _next_plugin_version(plugin_version, current_platform_version, new_platform_version) {
-    const [current_major, current_minor, current_patch, current_build = 0] = current_platform_version.split('.').map(Number);
+    const [current_major, current_minor, current_patch, current_build = 0] = current_platform_version
+        .split('.')
+        .map(Number);
     const [new_major, new_minor, new_patch, new_build = 0] = new_platform_version.split('.').map(Number);
     // # Platform: 2022.3.2 -> 2023.1.0
     // # Plugin  :    0.2.6 ->    1.0.0
@@ -557,7 +559,8 @@ ${releaseInfo.whatsnew}
 }
 core.debug('Starting...');
 run()
-    .then(() => { })
+    .then(() => {
+})
     .catch((err) => {
     core.setFailed(err.message);
     core.debug(err);

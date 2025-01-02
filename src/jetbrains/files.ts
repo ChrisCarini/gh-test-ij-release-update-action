@@ -21,15 +21,17 @@ export const _inc_version = (version: semver.SemVer, release: semver.ReleaseType
     throw new Error(`Failed to increment ${release} version of ${version}`);
   }
   return new semver.SemVer(incrementedVersion);
-}
+};
 
 export function _next_plugin_version(
   plugin_version: semver.SemVer,
   current_platform_version: string,
   new_platform_version: string
 ): semver.SemVer {
-    const [current_major, current_minor, current_patch, current_build = 0] = current_platform_version.split('.').map(Number);
-    const [new_major, new_minor, new_patch, new_build = 0] = new_platform_version.split('.').map(Number);
+  const [current_major, current_minor, current_patch, current_build = 0] = current_platform_version
+    .split('.')
+    .map(Number);
+  const [new_major, new_minor, new_patch, new_build = 0] = new_platform_version.split('.').map(Number);
 
   // # Platform: 2022.3.2 -> 2023.1.0
   // # Plugin  :    0.2.6 ->    1.0.0
@@ -63,167 +65,164 @@ export async function updateGradleProperties(
   latestIdeVersion: string,
   gradlePropertyVersionName: 'pluginVersion' | 'libraryVersion'
 ): Promise<string> {
-    core.debug('Updating  [gradle.properties] file...');
-    core.debug(latestIdeVersion);
+  core.debug('Updating  [gradle.properties] file...');
+  core.debug(latestIdeVersion);
 
-    const globber = await glob.create('./gradle.properties');
-    const files = await globber.glob();
-    core.debug(`Found ${files.length} files`);
-    if (files.length !== 1) {
-      core.setFailed('Too many .properties files found. Exiting.');
-    }
-    const gradle_file = files[0];
+  const globber = await glob.create('./gradle.properties');
+  const files = await globber.glob();
+  core.debug(`Found ${files.length} files`);
+  if (files.length !== 1) {
+    core.setFailed('Too many .properties files found. Exiting.');
+  }
+  const gradle_file = files[0];
 
-    interface JBGradlePropertiesFile {
-      pluginVersion?: string | number;
-      libraryVersion?: string | number;
-      pluginVerifierIdeVersions?: string | number;
-      platformVersion?: string | number;
-      pluginSinceBuild?: string | number;
-      pluginUntilBuild?: string | number;
-    }
+  interface JBGradlePropertiesFile {
+    pluginVersion?: string | number;
+    libraryVersion?: string | number;
+    pluginVerifierIdeVersions?: string | number;
+    platformVersion?: string | number;
+    pluginSinceBuild?: string | number;
+    pluginUntilBuild?: string | number;
+  }
 
-    const gradleProperties: JBGradlePropertiesFile = properties.parse(readFileSync(gradle_file, 'utf-8'), {
-      namespaces: true,
-      sections: true,
-      variables: true,
+  const gradleProperties: JBGradlePropertiesFile = properties.parse(readFileSync(gradle_file, 'utf-8'), {
+    namespaces: true,
+    sections: true,
+    variables: true,
+  });
+  core.debug(`properties:`);
+  core.debug(JSON.stringify(gradleProperties));
+
+  const version = gradleProperties?.[gradlePropertyVersionName]?.toString();
+  const currentVersion = parseSemver(version);
+
+  // const currentPluginVerifierIdeVersions = parseSemver(gradleProperties?.pluginVerifierIdeVersions?.toString());
+  const currentPluginVerifierIdeVersions = gradleProperties?.pluginVerifierIdeVersions
+    ?.toString()
+    .split(',')
+    .map((v) => {
+      const semVer = parseSemver(v);
+      core.info(`${v} -> ${semVer}`);
+      return semVer;
+    })
+    .filter((v) => {
+      if (v.compare(ZERO_SEMVER)) {
+        return true;
+      }
+      return false;
     });
-    core.debug(`properties:`);
-    core.debug(JSON.stringify(gradleProperties));
 
-    const version = gradleProperties?.[gradlePropertyVersionName]?.toString();
-    const currentVersion = parseSemver(version);
+  const currentPlatformVersion = gradleProperties?.platformVersion?.toString();
+  core.debug(`currentVersion:                   ${currentVersion} ( (${gradlePropertyVersionName}) )`);
+  core.debug(`currentPluginVerifierIdeVersions: ${currentPluginVerifierIdeVersions}`);
+  core.debug(`currentPlatformVersion:           ${currentPlatformVersion}`);
+  core.debug(`currentPluginSinceBuild:          ${gradleProperties?.pluginSinceBuild}`);
+  core.debug(`currentPluginUntilBuild:          ${gradleProperties?.pluginUntilBuild}`);
 
-    // const currentPluginVerifierIdeVersions = parseSemver(gradleProperties?.pluginVerifierIdeVersions?.toString());
-    const currentPluginVerifierIdeVersions = gradleProperties?.pluginVerifierIdeVersions
-      ?.toString()
-      .split(',')
-      .map((v) => {
-        const semVer = parseSemver(v);
-        core.info(`${v} -> ${semVer}`);
-        return semVer;
-      })
-      .filter((v) => {
-        if (v.compare(ZERO_SEMVER)) {
-          return true;
-        }
-        return false;
-      });
+  if (currentPlatformVersion === latestIdeVersion) {
+    // Skip further execution, as the platform version is already the same, and we will end the action
+    return currentPlatformVersion;
+  }
+  if (currentPlatformVersion === undefined) {
+    throw new Error('No platformVersion found in the gradle.properties file. Exiting.');
+  }
 
-    const currentPlatformVersion = gradleProperties?.platformVersion?.toString();
-    core.debug(`currentVersion:                   ${currentVersion} ( (${gradlePropertyVersionName}) )`);
-    core.debug(`currentPluginVerifierIdeVersions: ${currentPluginVerifierIdeVersions}`);
-    core.debug(`currentPlatformVersion:           ${currentPlatformVersion}`);
-    core.debug(`currentPluginSinceBuild:          ${gradleProperties?.pluginSinceBuild}`);
-    core.debug(`currentPluginUntilBuild:          ${gradleProperties?.pluginUntilBuild}`);
+  const next_plugin_version: semver.SemVer = _next_plugin_version(
+    currentVersion,
+    currentPlatformVersion,
+    latestIdeVersion
+  );
+  core.debug('');
+  core.debug(`next_plugin_version:                  ${next_plugin_version}`);
 
-    if (currentPlatformVersion === latestIdeVersion) {
-      // Skip further execution, as the platform version is already the same, and we will end the action
-      return currentPlatformVersion;
-    }
-    if (currentPlatformVersion === undefined) {
-      throw new Error('No platformVersion found in the gradle.properties file. Exiting.');
-    }
+  const data = fs.readFileSync(gradle_file, 'utf8');
 
-    const next_plugin_version: semver.SemVer = _next_plugin_version(
-      currentVersion,
-      currentPlatformVersion,
-      latestIdeVersion
+  core.debug('File contents:');
+  core.debug(data);
+
+  const nextPlatformVersion = formatVersion(latestIdeVersion);
+  // Note: We intentionally use the non-semver object variables for the `new RegExp()` since the semver objects may
+  // include an extra `.0` for the 'patch' version that would not be found in the `gradle.properties` file.
+  // (e.g., the string/number `2022.2` would be in the `gradle.properties` file,
+  // but the semver object would be `2022.2.0`, and thus we would not find this
+  // in the `gradle.properties` file.
+  const result = data
+    .replace(
+      new RegExp(`^${gradlePropertyVersionName} = ${version}$`, 'gm'),
+      `${gradlePropertyVersionName} = ${next_plugin_version}`
+    )
+    .replace(
+      // Just grab and replace only the first version (up to the first comma)
+      new RegExp(`^pluginVerifierIdeVersions = ${formatVersion(currentPlatformVersion)}`, 'gm'),
+      `pluginVerifierIdeVersions = ${nextPlatformVersion}`
+    )
+    .replace(
+      new RegExp(`^platformVersion = ${gradleProperties?.platformVersion?.toString()}$`, 'gm'),
+      `platformVersion = ${nextPlatformVersion}`
+    )
+    .replace(
+      new RegExp(`^pluginSinceBuild = ${gradleProperties?.pluginSinceBuild?.toString()}$`, 'gm'),
+      `pluginSinceBuild = ${releaseInfo.build.split('.')[0].toString()}`
+    )
+    .replace(
+      new RegExp(`^pluginUntilBuild = ${gradleProperties?.pluginUntilBuild?.toString()}$`, 'gm'),
+      `pluginUntilBuild = ${releaseInfo.build.split('.')[0].toString()}.*`
     );
-    core.debug('');
-    core.debug(`next_plugin_version:                  ${next_plugin_version}`);
 
-    const data = fs.readFileSync(gradle_file, 'utf8');
+  core.debug('Updated file contents:');
+  core.debug(result);
 
-    core.debug('File contents:');
-    core.debug(data);
+  await fs.promises.writeFile(gradle_file, result, 'utf8');
 
-    const nextPlatformVersion = formatVersion(latestIdeVersion);
-    // Note: We intentionally use the non-semver object variables for the `new RegExp()` since the semver objects may
-    // include an extra `.0` for the 'patch' version that would not be found in the `gradle.properties` file.
-    // (e.g., the string/number `2022.2` would be in the `gradle.properties` file,
-    // but the semver object would be `2022.2.0`, and thus we would not find this
-    // in the `gradle.properties` file.
-    const result = data
-      .replace(
-        new RegExp(`^${gradlePropertyVersionName} = ${version}$`, 'gm'),
-        `${gradlePropertyVersionName} = ${next_plugin_version}`
-      )
-      .replace(
-        // Just grab and replace only the first version (up to the first comma)
-        new RegExp(`^pluginVerifierIdeVersions = ${formatVersion(currentPlatformVersion)}`, 'gm'),
-        `pluginVerifierIdeVersions = ${nextPlatformVersion}`
-      )
-      .replace(
-        new RegExp(`^platformVersion = ${gradleProperties?.platformVersion?.toString()}$`, 'gm'),
-        `platformVersion = ${nextPlatformVersion}`
-      )
-      .replace(
-        new RegExp(`^pluginSinceBuild = ${gradleProperties?.pluginSinceBuild?.toString()}$`, 'gm'),
-        `pluginSinceBuild = ${releaseInfo.build.split('.')[0].toString()}`
-      )
-      .replace(
-        new RegExp(`^pluginUntilBuild = ${gradleProperties?.pluginUntilBuild?.toString()}$`, 'gm'),
-        `pluginUntilBuild = ${releaseInfo.build.split('.')[0].toString()}.*`
-      );
+  core.debug(`${gradle_file} file written; about to git add...`);
 
-    core.debug('Updated file contents:');
-    core.debug(result);
+  // `git add gradle.properties`
+  await git_add(gradle_file);
 
-    await fs.promises.writeFile(gradle_file, result, 'utf8');
+  core.debug('Completed [gradle.properties] file.');
 
-    core.debug(`${gradle_file} file written; about to git add...`);
-
-    // `git add gradle.properties`
-    await git_add(gradle_file);
-
-    core.debug('Completed [gradle.properties] file.');
-
-    return currentPlatformVersion ? currentPlatformVersion : ZERO_SEMVER_STR;
+  return currentPlatformVersion ? currentPlatformVersion : ZERO_SEMVER_STR;
 }
 
-export async function updateChangelog(
-  currentPlatformVersion: string,
-  latestIdeVersion: string
-): Promise<void> {
-    core.debug('Updating  [CHANGELOG.md] file...');
-    core.debug(latestIdeVersion);
+export async function updateChangelog(currentPlatformVersion: string, latestIdeVersion: string): Promise<void> {
+  core.debug('Updating  [CHANGELOG.md] file...');
+  core.debug(latestIdeVersion);
 
-    const upgradeLine = `- Upgrading IntelliJ from ${formatVersion(currentPlatformVersion)} to ${latestIdeVersion}`;
+  const upgradeLine = `- Upgrading IntelliJ from ${formatVersion(currentPlatformVersion)} to ${latestIdeVersion}`;
 
-    const globber = await glob.create('./CHANGELOG.md');
-    const files = await globber.glob();
-    core.debug(`Found ${files.length} files`);
-    if (files.length !== 1) {
-      throw new Error('Too many ./CHANGELOG.md files found. Exiting.');
-    }
-    const changelogFile = files[0];
+  const globber = await glob.create('./CHANGELOG.md');
+  const files = await globber.glob();
+  core.debug(`Found ${files.length} files`);
+  if (files.length !== 1) {
+    throw new Error('Too many ./CHANGELOG.md files found. Exiting.');
+  }
+  const changelogFile = files[0];
 
-    const data = fs.readFileSync(changelogFile, 'utf8');
+  const data = fs.readFileSync(changelogFile, 'utf8');
 
-    if (new RegExp(`^${upgradeLine}$`, 'gm').test(data)) {
-      core.info(`Skipping  [CHANGELOG.md] file, already found "${upgradeLine}" in file.`);
-      return;
-    }
+  if (new RegExp(`^${upgradeLine}$`, 'gm').test(data)) {
+    core.info(`Skipping  [CHANGELOG.md] file, already found "${upgradeLine}" in file.`);
+    return;
+  }
 
-    const result = data.replace(
-      // We do *NOT* want the `g` flag, as we only want to replace the first instance
-      // (which should be in the `Unreleased` section) of this section.
-      new RegExp(`^### Changed$`, 'm'),
-      `### Changed\n${upgradeLine}`
-    );
+  const result = data.replace(
+    // We do *NOT* want the `g` flag, as we only want to replace the first instance
+    // (which should be in the `Unreleased` section) of this section.
+    new RegExp(`^### Changed$`, 'm'),
+    `### Changed\n${upgradeLine}`
+  );
 
-    core.debug('Updated file contents:');
-    core.debug(result);
+  core.debug('Updated file contents:');
+  core.debug(result);
 
-    await fs.promises.writeFile(changelogFile, result, 'utf8');
+  await fs.promises.writeFile(changelogFile, result, 'utf8');
 
-    core.debug(`${changelogFile} file written; about to git add...`);
+  core.debug(`${changelogFile} file written; about to git add...`);
 
-    // `git add CHANGELOG.md`
-    await git_add(changelogFile);
+  // `git add CHANGELOG.md`
+  await git_add(changelogFile);
 
-    core.debug('Completed [CHANGELOG.md] file.');
+  core.debug('Completed [CHANGELOG.md] file.');
 }
 
 function _fileContains(file: string, search: string): boolean {
@@ -235,44 +234,41 @@ function _fileContains(file: string, search: string): boolean {
   return new RegExp(`${search}`, 'gm').test(fileData);
 }
 
-export async function updateGithubWorkflow(
-  currentPlatformVersion: string,
-  latestIdeVersion: string
-): Promise<void> {
-    core.debug('Updating GitHub workflow files...');
-    core.debug(`currentPlatformVersion: ${currentPlatformVersion}`);
-    core.debug(`latestIdeVersion:       ${latestIdeVersion}`);
+export async function updateGithubWorkflow(currentPlatformVersion: string, latestIdeVersion: string): Promise<void> {
+  core.debug('Updating GitHub workflow files...');
+  core.debug(`currentPlatformVersion: ${currentPlatformVersion}`);
+  core.debug(`latestIdeVersion:       ${latestIdeVersion}`);
 
-    const globber = await glob.create('./.github/workflows/*');
-    const files = await globber.glob();
-    core.debug(`Found ${files.length} files...`);
+  const globber = await glob.create('./.github/workflows/*');
+  const files = await globber.glob();
+  core.debug(`Found ${files.length} files...`);
 
-    const filesToUpdate = files.filter((file) => {
-      return _fileContains(file, 'uses: ChrisCarini/intellij-platform-plugin-verifier-action');
-    });
+  const filesToUpdate = files.filter((file) => {
+    return _fileContains(file, 'uses: ChrisCarini/intellij-platform-plugin-verifier-action');
+  });
 
-    core.debug(
-      `Found ${filesToUpdate.length} files containing [ChrisCarini/intellij-platform-plugin-verifier-action]...`
-    );
+  core.debug(
+    `Found ${filesToUpdate.length} files containing [ChrisCarini/intellij-platform-plugin-verifier-action]...`
+  );
 
-    for (const file of filesToUpdate) {
-      const data = fs.readFileSync(file, 'utf8');
-      const result = data
-        .replace(new RegExp(`ideaIC:${formatVersion(currentPlatformVersion)}`, 'gm'), `ideaIC:${latestIdeVersion}`)
-        .replace(new RegExp(`ideaIU:${formatVersion(currentPlatformVersion)}`, 'gm'), `ideaIU:${latestIdeVersion}`);
+  for (const file of filesToUpdate) {
+    const data = fs.readFileSync(file, 'utf8');
+    const result = data
+      .replace(new RegExp(`ideaIC:${formatVersion(currentPlatformVersion)}`, 'gm'), `ideaIC:${latestIdeVersion}`)
+      .replace(new RegExp(`ideaIU:${formatVersion(currentPlatformVersion)}`, 'gm'), `ideaIU:${latestIdeVersion}`);
 
-      core.debug('Updated file contents:');
-      core.debug(result);
+    core.debug('Updated file contents:');
+    core.debug(result);
 
-      await fs.promises.writeFile(file, result, 'utf8');
+    await fs.promises.writeFile(file, result, 'utf8');
 
-      core.debug(`${file} file written; about to git add...`);
+    core.debug(`${file} file written; about to git add...`);
 
-      // `git add <current_workflow_file>`
-      await git_add(file);
+    // `git add <current_workflow_file>`
+    await git_add(file);
 
-      core.debug(`Completed [${file}] file.`);
-    }
+    core.debug(`Completed [${file}] file.`);
+  }
 
-    core.debug(`Completed updating ${filesToUpdate.length} GitHub workflow files.`);
+  core.debug(`Completed updating ${filesToUpdate.length} GitHub workflow files.`);
 }
