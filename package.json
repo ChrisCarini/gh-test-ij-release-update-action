@@ -36,7 +36,7 @@
     "@octokit/webhooks-types": "^7.6.1",
     "@typescript-eslint/eslint-plugin": "^8.32.0",
     "properties": "^1.2.1",
-    "semver": "^7.7.1",
+    "semver": "^7.7.2",
     "simple-git": "^3.27.0"
   },
   "devDependencies": {
