@@ -3,13 +3,13 @@ import * as github from '@actions/github';
 import { WorkflowDispatchEvent } from '@octokit/webhooks-types';
 import * as semver from 'semver';
 import { simpleGit, StatusResult } from 'simple-git';
-import { updateChangelog, updateGithubWorkflow, updateGradleProperties } from './jetbrains/files';
+import { updateChangelog, updateGithubWorkflow, updateGradleProperties } from './jetbrains/files.ts';
 import {
   formatVersion,
   getLatestIntellijReleaseInfo,
   JetBrainsProductReleaseInfo,
   parseSemver,
-} from './jetbrains/versions';
+} from './jetbrains/versions.ts';
 
 async function checkFileChangeCount(): Promise<number> {
   core.debug('BEFORE: simpleGit().status()');
@@ -37,7 +37,7 @@ async function run(): Promise<void> {
   const releaseInfo: JetBrainsProductReleaseInfo = await getLatestIntellijReleaseInfo();
   core.debug(`Latest IntelliJ Release Info:`);
   core.debug(JSON.stringify(releaseInfo));
-  const latestVersion: string = releaseInfo.version;
+  const latestVersion: semver.SemVer = parseSemver(releaseInfo.version);
   core.debug(`Latest IntelliJ Version: ${latestVersion}`);
 
   const gradlePropertyVersionName = core.getInput('gradlePropertyVersionName');
@@ -49,14 +49,14 @@ async function run(): Promise<void> {
   }
 
   // update gradle.properties file
-  const currentPlatformVersion: string = await updateGradleProperties(
+  const currentPlatformVersion: semver.SemVer = await updateGradleProperties(
     releaseInfo,
     latestVersion,
     gradlePropertyVersionName
   );
   core.debug(`Current Platform Version: ${currentPlatformVersion}`);
 
-  if (currentPlatformVersion === latestVersion) {
+  if (semver.eq(currentPlatformVersion, latestVersion)) {
     core.info(
       `Skipping update, current and next platform versions are the same (${currentPlatformVersion} == ${latestVersion}).`
     );

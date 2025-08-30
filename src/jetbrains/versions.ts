@@ -20,6 +20,28 @@ export function parseSemver(input: string | undefined): semver.SemVer {
     input = `${input}.0`;
   }
 
+  // Sometimes (7 times for IJ as of 2025-05-13) JetBrains releases a version
+  // with 4-parts (e.g. 2025.1.1.1). This is not a valid SemVer version, so we
+  // need to 'hack' something to make it work, since the semver library does
+  // not support 4 part versions. We exploit the fact that pre-release versions
+  // (e.g. a version with a dash after the 3rd part) are valid SemVer versions.
+  //
+  // Cheat: If there are 3 or more dots, replace the third dot(.) with a dash(-),
+  // effectively converting the 4+ part version to a 'pre-release' version for
+  // comparison.
+  // e.g. - 2025.1.1.1 -> 2025.1.1-1
+  //      - 2025.1.2.3.4 -> 2025.1.1-3.4
+  if (countDots >= 3) {
+    let dotCount = 0;
+    input = input.replace(/\./g, (match) => {
+      dotCount++;
+      if (dotCount === 3) {
+        return '-';
+      }
+      return match;
+    });
+  }
+
   const parsed = semver.parse(input);
   if (parsed == null) {
     core.error(`Failed to parse ${input} to Semantic Versioning`);
@@ -32,8 +54,12 @@ export function parseSemver(input: string | undefined): semver.SemVer {
  * Format version by removing any `.0` from the end of the version string.
  * @param version
  */
-export function formatVersion(version: string): string {
-  return version.endsWith('.0') ? version.slice(0, -2) : version;
+// export function formatVersion(version: string): string {
+//   return version.endsWith('.0') ? version.slice(0, -2) : version;
+// }
+export function formatVersion(version: semver.SemVer): string {
+  const strVersion = version.toString();
+  return strVersion.endsWith('.0') ? strVersion.slice(0, -2) : strVersion;
 }
 
 export interface JetBrainsProductReleaseInfo {

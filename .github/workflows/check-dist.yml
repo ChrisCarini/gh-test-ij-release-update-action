@@ -18,31 +18,34 @@ on:
 
 jobs:
   check-dist:
+    name: Check dist/
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
         if: ${{ github.event_name != 'pull_request' }}
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
         if: ${{ github.event_name == 'pull_request' }}
         with:
-          ref: ${{ github.head_ref }}
           # ref: ${{ github.event.pull_request.head.ref }}
           # repository: ${{ github.event.pull_request.head.repo.full_name }}
+          ref: ${{ github.head_ref }}
           token: ${{ secrets.GH_PAT_REPO_WORKFLOW_SCOPE }}
 
-      - name: Set Node.js 16.x
-        uses: actions/setup-node@v4.4.0
+      - name: Setup Node.js
+        id: setup-node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
-          node-version: 16.x
+          node-version-file: .node-version
+          cache: npm
 
-      - name: Install dependencies
+      - name: Install Dependencies
+        id: install
         run: npm ci
 
       - name: Rebuild the dist/ directory
         run: |
-          npm run build
-          npm run package
+          npm run bundle
 
       - name: Compare the expected and actual dist/ directories
         run: |
@@ -54,7 +57,7 @@ jobs:
         id: diff
 
       - name: Push changes back to PR branch
-        if: ${{ failure() && steps.diff.conclusion == 'failure' && github.event_name == 'pull_request' }}
+        if: ${{ failure() && steps.diff.outcome == 'failure' && github.event_name == 'pull_request' }}
         run: |
           git config --global user.email "6374067+ChrisCarini@users.noreply.github.com"
           git config --global user.name "ChrisCarini"
@@ -63,8 +66,8 @@ jobs:
           git push
 
       # If index.js was different than expected, upload the expected version as an artifact
-      - uses: actions/upload-artifact@v4
-        if: ${{ failure() && steps.diff.conclusion == 'failure' }}
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: ${{ failure() && steps.diff.outcome == 'failure' }}
         with:
           name: dist
           path: dist/

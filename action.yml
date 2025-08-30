@@ -1,6 +1,9 @@
 name: 'JetBrains Plugin Platform Version Update Action'
 description: 'GitHub Action to update JetBrains Plugins when a new JetBrains Platform Version is available.'
 author: 'ChrisCarini'
+branding:
+  icon: arrow-up
+  color: blue
 inputs:
   PAT_TOKEN_FOR_IJ_UPDATE_ACTION: # change this
     required: true
