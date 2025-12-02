@@ -44,7 +44,7 @@
     "@actions/glob": "^0.5.0",
     "@actions/http-client": "^3.0.0",
     "@octokit/webhooks-types": "^7.6.1",
-    "@typescript-eslint/eslint-plugin": "^8.48.0",
+    "@typescript-eslint/eslint-plugin": "^8.48.1",
     "properties": "^1.2.1",
     "semver": "^7.7.3",
     "simple-git": "^3.30.0"
@@ -59,7 +59,7 @@
     "@types/jest": "^30.0.0",
     "@types/node": "^24.10.1",
     "@types/semver": "^7.7.1",
-    "@typescript-eslint/eslint-plugin": "^8.48.0",
+    "@typescript-eslint/eslint-plugin": "^8.48.1",
     "@typescript-eslint/parser": "^8.48.0",
     "eslint": "^9.39.1",
     "eslint-config-prettier": "^10.1.2",
