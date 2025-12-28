@@ -1,0 +1,76 @@
+import * as core from '@actions/core';
+import * as httpClient from '@actions/http-client';
+import * as semver from 'semver';
+export const ZERO_SEMVER_STR = '0.0.0';
+export const ZERO_SEMVER = new semver.SemVer(ZERO_SEMVER_STR);
+export function parseSemver(input) {
+    if (input === undefined) {
+        core.setFailed(`Input to parse SemVer is undefined.`);
+        return ZERO_SEMVER;
+    }
+    // If we only have one dot, assume the input is
+    // a major version (ie, 2022.2, aka 2022.2.0) and
+    // add a `.0` at the end.
+    core.warning(`INPUT: ${input} (type: ${typeof input})`);
+    const countDots = (input.match(/\./g) || []).length;
+    if (countDots === 1) {
+        input = `${input}.0`;
+    }
+    // Sometimes (7 times for IJ as of 2025-05-13) JetBrains releases a version
+    // with 4-parts (e.g. 2025.1.1.1). This is not a valid SemVer version, so we
+    // need to 'hack' something to make it work, since the semver library does
+    // not support 4 part versions. We exploit the fact that pre-release versions
+    // (e.g. a version with a dash after the 3rd part) are valid SemVer versions.
+    //
+    // Cheat: If there are 3 or more dots, replace the third dot(.) with a dash(-),
+    // effectively converting the 4+ part version to a 'pre-release' version for
+    // comparison.
+    // e.g. - 2025.1.1.1 -> 2025.1.1-1
+    //      - 2025.1.2.3.4 -> 2025.1.1-3.4
+    if (countDots >= 3) {
+        let dotCount = 0;
+        input = input.replace(/\./g, (match) => {
+            dotCount++;
+            if (dotCount === 3) {
+                return '-';
+            }
+            return match;
+        });
+    }
+    const parsed = semver.parse(input);
+    if (parsed == null) {
+        core.error(`Failed to parse ${input} to Semantic Versioning`);
+        return ZERO_SEMVER;
+    }
+    return parsed;
+}
+/**
+ * Format version by removing any `.0` from the end of the version string.
+ * @param version
+ */
+// export function formatVersion(version: string): string {
+//   return version.endsWith('.0') ? version.slice(0, -2) : version;
+// }
+export function formatVersion(version) {
+    const strVersion = version.toString();
+    return strVersion.endsWith('.0') ? strVersion.slice(0, -2) : strVersion;
+}
+export async function getLatestIntellijReleaseInfo() {
+    try {
+        // get the latest intellij release
+        const client = new httpClient.HttpClient();
+        const response = await client.get('https://data.services.jetbrains.com/products/releases?code=IIU&latest=true&release.type=release');
+        const body = await response.readBody();
+        const ides = JSON.parse(body);
+        core.debug(`ides:`);
+        core.debug(JSON.stringify(ides));
+        return ides['IIU'][0];
+    }
+    catch (error) {
+        core.setFailed('Error getting the latest version of IntelliJ. Exiting.');
+        if (error instanceof Error)
+            core.setFailed(error.message);
+        process.exitCode = 1;
+        throw error;
+    }
+}
