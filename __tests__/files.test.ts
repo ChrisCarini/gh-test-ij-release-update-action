@@ -1,7 +1,7 @@
 import { jest } from '@jest/globals';
-import { _next_plugin_version } from '../src/jetbrains/files.ts';
+import { _next_plugin_version } from '../src/jetbrains/files';
 import * as semver from 'semver';
-import * as versions from '../src/jetbrains/versions.ts';
+import * as versions from '../src/jetbrains/versions';
 
 jest.mock('@actions/core');
 

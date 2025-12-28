@@ -3,13 +3,13 @@ import * as github from '@actions/github';
 import { WorkflowDispatchEvent } from '@octokit/webhooks-types';
 import * as semver from 'semver';
 import { simpleGit, StatusResult } from 'simple-git';
-import { updateChangelog, updateGithubWorkflow, updateGradleProperties } from './jetbrains/files.ts';
+import { updateChangelog, updateGithubWorkflow, updateGradleProperties } from './jetbrains/files';
 import {
   formatVersion,
   getLatestIntellijReleaseInfo,
   JetBrainsProductReleaseInfo,
   parseSemver,
-} from './jetbrains/versions.ts';
+} from './jetbrains/versions';
 
 async function checkFileChangeCount(): Promise<number> {
   core.debug('BEFORE: simpleGit().status()');

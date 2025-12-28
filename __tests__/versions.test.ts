@@ -1,13 +1,12 @@
 import { jest } from '@jest/globals';
-import * as core from '../__fixtures__/core.ts';
+import * as core from '../__fixtures__/core';
 import * as semver from 'semver';
 
 // Mocks should be declared before the module being tested is imported.
 jest.unstable_mockModule('@actions/core', () => core);
 
-const { getLatestIntellijReleaseInfo, formatVersion, parseSemver, ZERO_SEMVER } = await import(
-  '../src/jetbrains/versions.ts'
-);
+const { getLatestIntellijReleaseInfo, formatVersion, parseSemver, ZERO_SEMVER } =
+  await import('../src/jetbrains/versions');
 
 describe('parseSemver', () => {
   it('should return ZERO_SEMVER when input is undefined', () => {

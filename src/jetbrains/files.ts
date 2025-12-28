@@ -5,7 +5,7 @@ import { readFileSync } from 'fs';
 import * as properties from 'properties';
 import * as semver from 'semver';
 import { simpleGit } from 'simple-git';
-import { formatVersion, JetBrainsProductReleaseInfo, parseSemver, ZERO_SEMVER } from './versions.ts';
+import { formatVersion, JetBrainsProductReleaseInfo, parseSemver, ZERO_SEMVER } from './versions';
 
 async function git_add(file: string): Promise<void> {
   await simpleGit()
