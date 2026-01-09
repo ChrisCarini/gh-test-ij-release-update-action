@@ -86,4 +86,31 @@ describe('_next_plugin_version', () => {
     );
     expect(result).toStrictEqual(semver.parse('2.0.1'));
   });
+
+  it('[confusing - super patch/prerelease] update 2.0.0 -> 2.0.1 for 2025.3.1 -> 2025.3.1.1', () => {
+    const result = _next_plugin_version(
+      versions.parseSemver('2.0.0'),
+      versions.parseSemver('2025.3.1'),
+      versions.parseSemver('2025.3.1.1')
+    );
+    expect(result).toStrictEqual(semver.parse('2.0.1'));
+  });
+
+  it('[confusing - patch] update 3.2.1 -> 3.2.2 for 2025.3.1.1 -> 2025.3.2', () => {
+    const result = _next_plugin_version(
+      versions.parseSemver('3.2.1'),
+      versions.parseSemver('2025.3.1.1'),
+      versions.parseSemver('2025.3.2')
+    );
+    expect(result).toStrictEqual(semver.parse('3.2.2'));
+  });
+
+  it('[confusing - minor] update 3.2.1 -> 3.3.0 for 2025.2.4.1 -> 2025.3.0', () => {
+    const result = _next_plugin_version(
+      versions.parseSemver('3.2.1'),
+      versions.parseSemver('2025.2.4.1'),
+      versions.parseSemver('2025.3.0')
+    );
+    expect(result).toStrictEqual(semver.parse('3.3.0'));
+  });
 });

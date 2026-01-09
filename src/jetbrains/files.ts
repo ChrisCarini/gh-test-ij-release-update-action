@@ -75,6 +75,14 @@ export function _next_plugin_version(
     return _inc_version(plugin_version, 'patch');
   }
 
+  // # Platform: 2025.3.1 -> 2025.3.1.1
+  // # Plugin  :    2.0.0 ->    2.0.1
+  const npv_fourth_part = Number(new_platform_version.prerelease[0] ?? 0);
+  const cpv_fourth_part = Number(current_platform_version.prerelease[0] ?? 0);
+  if (npv_fourth_part > cpv_fourth_part) {
+    return _inc_version(plugin_version, 'patch');
+  }
+
   return plugin_version;
 }
 

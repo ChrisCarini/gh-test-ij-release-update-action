@@ -67,6 +67,11 @@ describe('formatVersion', () => {
     const result = formatVersion(new semver.SemVer('2.1.0'));
     expect(result).toBe('2.1');
   });
+
+  it('should transform prerelease into 4th part; 2025.3.1-1 -> 2025.3.1.1', () => {
+    const result = formatVersion(new semver.SemVer('2025.3.1-1'));
+    expect(result).toBe('2025.3.1.1');
+  });
 });
 describe('getLatestIntellijReleaseInfo', () => {
   it('should handle a successful call w/ valid data', async () => {
