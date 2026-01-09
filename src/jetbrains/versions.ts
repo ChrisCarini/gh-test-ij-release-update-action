@@ -58,7 +58,8 @@ export function parseSemver(input: string | undefined): semver.SemVer {
 //   return version.endsWith('.0') ? version.slice(0, -2) : version;
 // }
 export function formatVersion(version: semver.SemVer): string {
-  const strVersion = version.toString();
+  // The `.replace('-', '.')` covers prerelease for the 4-part version case.
+  const strVersion = version.toString().replace('-', '.');
   return strVersion.endsWith('.0') ? strVersion.slice(0, -2) : strVersion;
 }
 
