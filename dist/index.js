@@ -46065,8 +46065,8 @@ async function updateGradleProperties(releaseInfo, latestIdeVersion, gradlePrope
 }
 async function updateChangelog(currentPlatformVersion, latestIdeVersion) {
     core.debug('Updating [CHANGELOG.md] file...');
-    core.debug(latestIdeVersion.version);
-    const upgradeLine = `- Upgrading IntelliJ from ${(0, versions_1.formatVersion)(currentPlatformVersion)} to ${latestIdeVersion}`;
+    core.debug((0, versions_1.formatVersion)(latestIdeVersion));
+    const upgradeLine = `- Upgrading IntelliJ from ${(0, versions_1.formatVersion)(currentPlatformVersion)} to ${(0, versions_1.formatVersion)(latestIdeVersion)}`;
     const globber = await glob.create('./CHANGELOG.md');
     const files = await globber.glob();
     core.debug(`Found ${files.length} files`);
@@ -46099,8 +46099,10 @@ function _fileContains(file, search) {
 }
 async function updateGithubWorkflow(currentPlatformVersion, latestIdeVersion) {
     core.debug('Updating GitHub workflow files...');
-    core.debug(`currentPlatformVersion: ${currentPlatformVersion.version}`);
-    core.debug(`latestIdeVersion:       ${latestIdeVersion.version}`);
+    const formattedCurrentPlatformVersion = (0, versions_1.formatVersion)(currentPlatformVersion);
+    const formattedLatestIdeVersion = (0, versions_1.formatVersion)(latestIdeVersion);
+    core.debug(`currentPlatformVersion: ${formattedCurrentPlatformVersion}`);
+    core.debug(`latestIdeVersion:       ${formattedLatestIdeVersion}`);
     const globber = await glob.create('./.github/workflows/*');
     const files = await globber.glob();
     core.debug(`Found ${files.length} files...`);
@@ -46111,8 +46113,8 @@ async function updateGithubWorkflow(currentPlatformVersion, latestIdeVersion) {
     for (const file of filesToUpdate) {
         const data = fs.readFileSync(file, 'utf8');
         const result = data
-            .replace(new RegExp(`ideaIC:${(0, versions_1.formatVersion)(currentPlatformVersion)}`, 'gm'), `ideaIC:${latestIdeVersion}`)
-            .replace(new RegExp(`ideaIU:${(0, versions_1.formatVersion)(currentPlatformVersion)}`, 'gm'), `ideaIU:${latestIdeVersion}`);
+            .replace(new RegExp(`ideaIC:${formattedCurrentPlatformVersion}`, 'gm'), `ideaIC:${formattedLatestIdeVersion}`)
+            .replace(new RegExp(`ideaIU:${formattedCurrentPlatformVersion}`, 'gm'), `ideaIU:${formattedLatestIdeVersion}`);
         core.debug('Updated file contents:');
         core.debug(result);
         await fs.promises.writeFile(file, result, 'utf8');
@@ -46318,7 +46320,7 @@ async function run() {
     core.debug(`Latest IntelliJ Release Info:`);
     core.debug(JSON.stringify(releaseInfo));
     const latestVersion = (0, versions_1.parseSemver)(releaseInfo.version);
-    core.debug(`Latest IntelliJ Version: ${latestVersion}`);
+    core.debug(`Latest IntelliJ Version: ${(0, versions_1.formatVersion)(latestVersion)}`);
     const gradlePropertyVersionName = core.getInput('gradlePropertyVersionName');
     core.debug(`gradlePropertyVersionName: ${gradlePropertyVersionName}`);
     if (gradlePropertyVersionName !== 'pluginVersion' && gradlePropertyVersionName !== 'libraryVersion') {
@@ -46328,7 +46330,7 @@ async function run() {
     const currentPlatformVersion = await (0, files_1.updateGradleProperties)(releaseInfo, latestVersion, gradlePropertyVersionName);
     core.debug(`Current Platform Version: ${currentPlatformVersion}`);
     if (semver.eq(currentPlatformVersion, latestVersion)) {
-        core.info(`Skipping update, current and next platform versions are the same (${currentPlatformVersion} == ${latestVersion}).`);
+        core.info(`Skipping update, current and next platform versions are the same (${currentPlatformVersion} == ${(0, versions_1.formatVersion)(latestVersion)}).`);
         return;
     }
     // update CHANGELOG.md
@@ -46346,7 +46348,7 @@ async function run() {
     }
     // Commit the outstanding files
     core.debug('ABOUT TO COMMIT');
-    const newBranchName = `ChrisCarini/upgradeIntelliJ-${latestVersion}`;
+    const newBranchName = `ChrisCarini/upgradeIntelliJ-${(0, versions_1.formatVersion)(latestVersion)}`;
     const githubToken = core.getInput('PAT_TOKEN_FOR_IJ_UPDATE_ACTION');
     core.setSecret(githubToken);
     const octokit = github.getOctokit(githubToken);
@@ -46393,7 +46395,7 @@ async function run() {
         core.debug(`${newBranchName} - BRANCH ALREADY HAS A PR OPEN`);
         return;
     }
-    const upgradeTitle = `Upgrading IntelliJ from ${(0, versions_1.formatVersion)(currentPlatformVersion)} to ${latestVersion}`;
+    const upgradeTitle = `Upgrading IntelliJ from ${(0, versions_1.formatVersion)(currentPlatformVersion)} to ${(0, versions_1.formatVersion)(latestVersion)}`;
     if (!currentRemoteBranchNames.includes(newBranchName)) {
         core.debug(`${newBranchName} - BRANCH DOES NOT EXIST; CREATE & PUSH`);
         await (0, simple_git_1.simpleGit)()

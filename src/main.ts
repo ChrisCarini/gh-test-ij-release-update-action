@@ -38,7 +38,7 @@ async function run(): Promise<void> {
   core.debug(`Latest IntelliJ Release Info:`);
   core.debug(JSON.stringify(releaseInfo));
   const latestVersion: semver.SemVer = parseSemver(releaseInfo.version);
-  core.debug(`Latest IntelliJ Version: ${latestVersion}`);
+  core.debug(`Latest IntelliJ Version: ${formatVersion(latestVersion)}`);
 
   const gradlePropertyVersionName = core.getInput('gradlePropertyVersionName');
   core.debug(`gradlePropertyVersionName: ${gradlePropertyVersionName}`);
@@ -58,7 +58,7 @@ async function run(): Promise<void> {
 
   if (semver.eq(currentPlatformVersion, latestVersion)) {
     core.info(
-      `Skipping update, current and next platform versions are the same (${currentPlatformVersion} == ${latestVersion}).`
+      `Skipping update, current and next platform versions are the same (${currentPlatformVersion} == ${formatVersion(latestVersion)}).`
     );
     return;
   }
@@ -82,7 +82,7 @@ async function run(): Promise<void> {
 
   // Commit the outstanding files
   core.debug('ABOUT TO COMMIT');
-  const newBranchName = `ChrisCarini/upgradeIntelliJ-${latestVersion}`;
+  const newBranchName = `ChrisCarini/upgradeIntelliJ-${formatVersion(latestVersion)}`;
 
   const githubToken = core.getInput('PAT_TOKEN_FOR_IJ_UPDATE_ACTION');
   core.setSecret(githubToken);
@@ -139,7 +139,7 @@ async function run(): Promise<void> {
     return;
   }
 
-  const upgradeTitle = `Upgrading IntelliJ from ${formatVersion(currentPlatformVersion)} to ${latestVersion}`;
+  const upgradeTitle = `Upgrading IntelliJ from ${formatVersion(currentPlatformVersion)} to ${formatVersion(latestVersion)}`;
   if (!currentRemoteBranchNames.includes(newBranchName)) {
     core.debug(`${newBranchName} - BRANCH DOES NOT EXIST; CREATE & PUSH`);
     await simpleGit()
