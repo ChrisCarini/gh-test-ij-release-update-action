@@ -214,9 +214,9 @@ export async function updateChangelog(
   latestIdeVersion: semver.SemVer
 ): Promise<void> {
   core.debug('Updating [CHANGELOG.md] file...');
-  core.debug(latestIdeVersion.version);
+  core.debug(formatVersion(latestIdeVersion));
 
-  const upgradeLine = `- Upgrading IntelliJ from ${formatVersion(currentPlatformVersion)} to ${latestIdeVersion}`;
+  const upgradeLine = `- Upgrading IntelliJ from ${formatVersion(currentPlatformVersion)} to ${formatVersion(latestIdeVersion)}`;
 
   const globber = await glob.create('./CHANGELOG.md');
   const files = await globber.glob();
@@ -267,8 +267,10 @@ export async function updateGithubWorkflow(
   latestIdeVersion: semver.SemVer
 ): Promise<void> {
   core.debug('Updating GitHub workflow files...');
-  core.debug(`currentPlatformVersion: ${currentPlatformVersion.version}`);
-  core.debug(`latestIdeVersion:       ${latestIdeVersion.version}`);
+  const formattedCurrentPlatformVersion = formatVersion(currentPlatformVersion);
+  const formattedLatestIdeVersion = formatVersion(latestIdeVersion);
+  core.debug(`currentPlatformVersion: ${formattedCurrentPlatformVersion}`);
+  core.debug(`latestIdeVersion:       ${formattedLatestIdeVersion}`);
 
   const globber = await glob.create('./.github/workflows/*');
   const files = await globber.glob();
@@ -285,8 +287,8 @@ export async function updateGithubWorkflow(
   for (const file of filesToUpdate) {
     const data = fs.readFileSync(file, 'utf8');
     const result = data
-      .replace(new RegExp(`ideaIC:${formatVersion(currentPlatformVersion)}`, 'gm'), `ideaIC:${latestIdeVersion}`)
-      .replace(new RegExp(`ideaIU:${formatVersion(currentPlatformVersion)}`, 'gm'), `ideaIU:${latestIdeVersion}`);
+      .replace(new RegExp(`ideaIC:${formattedCurrentPlatformVersion}`, 'gm'), `ideaIC:${formattedLatestIdeVersion}`)
+      .replace(new RegExp(`ideaIU:${formattedCurrentPlatformVersion}`, 'gm'), `ideaIU:${formattedLatestIdeVersion}`);
 
     core.debug('Updated file contents:');
     core.debug(result);
