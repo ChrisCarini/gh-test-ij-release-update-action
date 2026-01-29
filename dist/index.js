@@ -810,7 +810,7 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.isLinux = exports.isMacOS = exports.isWindows = exports.arch = exports.platform = void 0;
 exports.getDetails = getDetails;
 const os_1 = __importDefault(__nccwpck_require__(857));
-const exec = __importStar(__nccwpck_require__(5236));
+const exec = __importStar(__nccwpck_require__(7251));
 const getWindowsInfo = () => __awaiter(void 0, void 0, void 0, function* () {
     const { stdout: version } = yield exec.getExecOutput('powershell -command "(Get-CimInstance -ClassName Win32_OperatingSystem).Version"', undefined, {
         silent: true
@@ -1201,7 +1201,7 @@ function toCommandProperties(annotationProperties) {
 
 /***/ }),
 
-/***/ 5236:
+/***/ 7251:
 /***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
 
 
@@ -1251,7 +1251,7 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.exec = exec;
 exports.getExecOutput = getExecOutput;
 const string_decoder_1 = __nccwpck_require__(3193);
-const tr = __importStar(__nccwpck_require__(6665));
+const tr = __importStar(__nccwpck_require__(5982));
 /**
  * Exec a command.
  * Output will be streamed to the live console.
@@ -1323,7 +1323,7 @@ function getExecOutput(commandLine, args, options) {
 
 /***/ }),
 
-/***/ 6665:
+/***/ 5982:
 /***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
 
 
