@@ -3,7 +3,6 @@ import jest from 'eslint-plugin-jest';
 import typescriptEslint from '@typescript-eslint/eslint-plugin';
 import stylistic from '@stylistic/eslint-plugin';
 import globals from 'globals';
-import github from 'eslint-plugin-github';
 import tsParser from '@typescript-eslint/parser';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -20,7 +19,6 @@ const compat = new FlatCompat({
 
 export default defineConfig([
   globalIgnores(['**/dist/', '**/lib/', '**/node_modules/', '**/jest.config.cjs', '**/customTypings/']),
-  github.getFlatConfigs().recommended,
   {
     files: ['**/*.ts', '**/*.cts', '**.*.mts'],
 
@@ -99,8 +97,6 @@ export default defineConfig([
       '@stylistic/semi': ['error', 'always'], // "@typescript-eslint/type-annotation-spacing": "error",
       '@stylistic/type-annotation-spacing': 'error',
       '@typescript-eslint/unbound-method': 'error',
-
-      'import/no-unresolved': ['error', { ignore: ['@octokit/openapi-types'] }],
     },
   },
 ]);
