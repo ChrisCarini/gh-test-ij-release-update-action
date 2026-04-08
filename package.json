@@ -45,7 +45,7 @@
     "simple-git": "^3.35.2"
   },
   "devDependencies": {
-    "@eslint/compat": "^2.0.4",
+    "@eslint/compat": "^2.0.5",
     "@eslint/eslintrc": "^3.3.4",
     "@eslint/js": "^10.0.1",
     "@github/local-action": "^7.0.1",
