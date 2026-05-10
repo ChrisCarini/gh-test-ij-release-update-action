@@ -75,11 +75,37 @@ describe('formatVersion', () => {
 });
 describe('getLatestIntellijReleaseInfo', () => {
   it('should handle a successful call w/ valid data', async () => {
+    const httpClientMock = jest
+      .spyOn((await import('@actions/http-client')).HttpClient.prototype, 'get')
+      .mockResolvedValue({
+        readBody: async () =>
+          JSON.stringify({
+            IIU: [
+              {
+                date: '2025-05-14',
+                type: 'release',
+                downloads: {},
+                patches: {},
+                notesLink: '',
+                licenseRequired: true,
+                version: '2025.1.1.1',
+                majorVersion: '2025.1',
+                build: '251.12345.67',
+                whatsnew: '',
+                uninstallFeedbackLinks: {},
+                printableReleaseType: {},
+              },
+            ],
+          }),
+      } as any);
+
     const result = await getLatestIntellijReleaseInfo();
     expect(semver.gte(parseSemver(result.version), parseSemver('2025.1.1.1'))).toBeTruthy(); // as of 2025-05-14
     expect(semver.gte(parseSemver(result.majorVersion), parseSemver('2025.1'))).toBeTruthy(); // as of 2025-05-14
     expect(result.licenseRequired).toBeTruthy(); // as of 2025-05-14
     expect(result.type).toBe('release');
+
+    httpClientMock.mockRestore();
   });
 
   it('should handle an error when client.get() fails', async () => {
