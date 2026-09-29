@@ -70,7 +70,7 @@
     "prettier": "^3.9.8",
     "prettier-eslint": "^17.1.2",
     "rollup": "^4.63.5",
-    "ts-jest": "^29.4.12",
+    "ts-jest": "^29.4.14",
     "ts-jest-resolver": "^2.0.1",
     "typescript": "^5.9.3"
   },
