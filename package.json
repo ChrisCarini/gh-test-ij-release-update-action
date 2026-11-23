@@ -42,7 +42,7 @@
     "@typescript-eslint/eslint-plugin": "^8.73.0",
     "properties": "^1.2.1",
     "semver": "^7.8.6",
-    "simple-git": "^4.0.2"
+    "simple-git": "^4.1.0"
   },
   "devDependencies": {
     "@eslint/compat": "^2.1.1",
